@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {View, StyleSheet} from "react-native";
 import SplashScree from "./splashScree";
 import Login from './login';
+
+
+const Stack = createNativeStackNavigator();
 
 export default function Index() {
   const [isShowSplash, setIsShowSplash] = useState(true);

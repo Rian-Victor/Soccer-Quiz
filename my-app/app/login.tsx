@@ -1,45 +1,50 @@
 import {StyleSheet, View, Image, Text, TextInput, TouchableOpacity} from "react-native";
+import { Link } from "expo-router";
 
 export default function Login(){
-    return(
-      <View style={styles.container}>
-        <View style={styles.content}>
-                <View style={styles.logoContent}>
-                    <Image source={require('../assets/images/LogoBG.png')} style={styles.loginLogo}></Image>
-                    <Text style={styles.title}>FUTQUIZ</Text>
-                </View>
-                <View style={styles.inputContent}>
-                    <Text style={styles.inputTitle}>E-mail</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Digite seu e-mail"
-                        placeholderTextColor="#A9A9A9" 
-                    />
+  return(
+    <View style={styles.container}>
+      <View style={styles.content}>
+              <View style={styles.logoContent}>
+                  <Image source={require('../assets/images/LogoBG.png')} style={styles.loginLogo}></Image>
+                  <Text style={styles.title}>FUTQUIZ</Text>
+              </View>
+              <View style={styles.inputContent}>
+                  <Text style={styles.inputTitle}>E-mail</Text>
+                  <TextInput
+                      style={styles.input}
+                      placeholder="Digite seu e-mail"
+                      placeholderTextColor="#A9A9A9" 
+                  />
 
-                    <Text style={styles.inputTitle}>Senha</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Digite sua senha"
-                        placeholderTextColor="#A9A9A9" 
-                        secureTextEntry
-                    />
+                  <Text style={styles.inputTitle}>Senha</Text>
+                  <TextInput
+                      style={styles.input}
+                      placeholder="Digite sua senha"
+                      placeholderTextColor="#A9A9A9" 
+                      secureTextEntry
+                  />
 
-                    <TouchableOpacity style={styles.botao} >
-                        <Text style={styles.textoBotao}>Entrar</Text>
-                    </TouchableOpacity>
+                  <TouchableOpacity style={styles.botao} >
+                      <Text style={styles.textoBotao}>Entrar</Text>
+                  </TouchableOpacity>
 
-                    <Text style={[styles.inputTitle, {fontSize: 15, opacity: 0.8, textDecorationLine: "underline"}]}>Esqueceu a senha?</Text>
-                </View>
-                
-                <Text style={styles.texto}>
-                    Não possui uma conta?{" "}
-                    <Text style={styles.cadastre}>Cadastre-se</Text>
-                </Text>
+                  <Text style={[styles.inputTitle, {fontSize: 15, opacity: 0.8, textDecorationLine: "underline"}]}>Esqueceu a senha?</Text>
+              </View>
+              
+              <View style={styles.viewcadastre}>
+                <Text style={styles.texto}>Não possui uma conta? </Text>
+                <Link href={"/cadastro"}>
+                  <Text style={styles.cadastre}>Cadastre-se</Text>
+                </Link>
+              </View>
+              
+              
 
-            </View>
-      </View>
-        
-    );
+          </View>
+    </View>
+      
+  );
 }
 
 const styles = StyleSheet.create({
@@ -52,11 +57,11 @@ const styles = StyleSheet.create({
     },
 
   content:{
-        flex: 1,
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center'
-  },
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center'
+},
 
   loginLogo:{
     width: 100,
@@ -71,20 +76,27 @@ const styles = StyleSheet.create({
   },
 
   inputContent:{
-     flex: 1.5,
+     flex: 1,
      justifyContent: 'flex-start',
      alignItems: 'flex-start'
   },
 
   texto:{
+    fontSize: 17,
+  },
+
+  viewcadastre:{
     flex: 0.5,
-    fontSize: 17
+    flexDirection: 'row', 
+    alignItems: 'center'
   },
 
   cadastre:{
     color: '#24BF94',
-    textDecorationLine: "underline"
+    textDecorationLine: "underline",
+    fontSize:18,
   },
+  
 
   inputTitle:{
     fontFamily: 'Rubik',
