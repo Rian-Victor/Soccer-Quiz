@@ -21,7 +21,6 @@ const styles = StyleSheet.create({
     image:{
     width:130,
     height:130,
-    marginBottom: 20
 },
 
     title:{
@@ -33,8 +32,9 @@ const styles = StyleSheet.create({
 
     subtitle:{
         color:'white',
-        fontSize: 20,
+        fontSize: 18,
         maxWidth:210,
+        lineHeight: 18,
         textAlign: 'center',
         fontFamily: 'RubikLight'
     }
