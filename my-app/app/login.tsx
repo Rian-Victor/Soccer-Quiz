@@ -25,9 +25,9 @@ export default function Login(){
                       secureTextEntry
                   />
 
-                  <TouchableOpacity style={styles.botao} >
+                  <Link style={[styles.botao, {paddingTop: 15}]} href="../(tabs)/home">
                       <Text style={styles.textoBotao}>Entrar</Text>
-                  </TouchableOpacity>
+                  </Link>
 
                   <Text style={[styles.inputTitle, {fontSize: 15, opacity: 0.8, textDecorationLine: "underline"}]}>Esqueceu a senha?</Text>
               </View>

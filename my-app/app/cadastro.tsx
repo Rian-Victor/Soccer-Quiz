@@ -146,7 +146,7 @@ export default function Cadastro(){
 
                         {senhaValida ? (
                             <Link
-                                href="/pattern"
+                                href="/home"
                                 style={[styles.botao, { backgroundColor: "#24BF94", paddingTop: 15}]}
                             >
                                 <Text style={styles.textoBotao}>Cadastrar</Text>
