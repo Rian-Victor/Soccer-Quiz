@@ -42,7 +42,7 @@ services:
   # Microserviços NestJS
 
   api-gateway:
-    build: ./api-gateway
+    build: backend/api-gateway
     container_name: api-gateway
     restart: always
     ports:
@@ -61,7 +61,7 @@ services:
       - backend-network
 
   auth-service:
-    build: ./auth-service
+    build: backend/auth-service
     container_name: auth-service
     restart: always
     ports:
@@ -77,7 +77,7 @@ services:
       - backend-network
 
   user-service:
-    build: ./user-service
+    build: backend/user-service
     container_name: user-service
     restart: always
     ports:
@@ -92,7 +92,7 @@ services:
       - backend-network
 
   team-service:
-    build: ./team-service
+    build: backend/team-service
     container_name: team-service
     restart: always
     ports:
@@ -107,7 +107,7 @@ services:
       - backend-network
 
   question-service:
-    build: ./question-service
+    build: backend/question-service
     container_name: question-service
     restart: always
     ports:
@@ -122,7 +122,7 @@ services:
       - backend-network
 
   answer-service:
-    build: ./answer-service
+    build: backend/answer-service
     container_name: answer-service
     restart: always
     ports:
