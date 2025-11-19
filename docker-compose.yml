@@ -1,151 +1,97 @@
-version: "3.9"
+version: "3.8"
 
 services:
-  # ======================================================Infraestrutura========================================
-  #
-  postgres:
-    image: postgres:15
-    container_name: postgres
-    restart: always
+  # --------------------------------------------------
+  # Infrastructure Services
+  # --------------------------------------------------
+  postgres-db:
+    image: postgres:13
+    container_name: postgres-db
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: soccer_quiz
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - backend-network
+      - soccer_quiz_net
 
-  mongodb:
-    image: mongo:6
-    container_name: mongodb
-    restart: always
+  mongo-db:
+    image: mongo:5.0
+    container_name: mongo-db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     ports:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
     networks:
-      - backend-network
+      - soccer_quiz_net
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    restart: always
-    ports:
-      - "5672:5672" # protocolo AMQP
-      - "15672:15672" # painel web
-    networks:
-      - backend-network
-
-  # ======================
-  # Microserviços NestJS
-
+  # --------------------------------------------------
+  # Backend Microservices
+  # --------------------------------------------------
   api-gateway:
-    build: backend/api-gateway
+    build: ./backend/api-gateway
     container_name: api-gateway
-    restart: always
     ports:
-      - "3000:3000"
+      - "3000:3000" # Main entry point for the frontend
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - USER_SERVICE_URL=http://user-service:3000
+      - AUTH_SERVICE_URL=http://auth-service:3000
+      - QUIZ_SERVICE_URL=http://quiz-service:3000
     depends_on:
-      - auth-service
       - user-service
-      - team-service
-      - question-service
-      - answer-service
-      - rabbitmq
-    environment:
-      JWT_SECRET: "super-secret"
-      RABBITMQ_URL: amqp://rabbitmq:5672
+      - auth-service
+      - quiz-service
     networks:
-      - backend-network
-
-  auth-service:
-    build: backend/auth-service
-    container_name: auth-service
-    restart: always
-    ports:
-      - "3001:3001"
-    depends_on:
-      - postgres
-      - rabbitmq
-    environment:
-      DATABASE_URL: postgres://root:root@postgres:5432/auth_db
-      JWT_SECRET: "super-secret"
-      RABBITMQ_URL: amqp://rabbitmq:5672
-    networks:
-      - backend-network
+      - soccer_quiz_net
 
   user-service:
-    build: backend/user-service
+    build: ./backend/user-service
     container_name: user-service
-    restart: always
     ports:
-      - "3002:3002"
-    depends_on:
-      - postgres
-      - rabbitmq
+      - "3001:3000"
     environment:
-      DATABASE_URL: postgres://root:root@postgres:5432/user_db
-      RABBITMQ_URL: amqp://rabbitmq:5672
+      DATABASE_URL: "postgresql://admin:${POSTGRES_PASSWORD}@postgres-db:5432/soccer_quiz?schema=public"
+    depends_on:
+      - postgres-db
     networks:
-      - backend-network
+      - soccer_quiz_net
 
-  team-service:
-    build: backend/team-service
-    container_name: team-service
-    restart: always
+  auth-service:
+    build: ./backend/auth-service
+    container_name: auth-service
     ports:
-      - "3003:3003"
-    depends_on:
-      - postgres
-      - rabbitmq
+      - "3002:3000"
     environment:
-      DATABASE_URL: postgres://root:root@postgres:5432/team_db
-      RABBITMQ_URL: amqp://rabbitmq:5672
+      DATABASE_URL: "postgresql://admin:${POSTGRES_PASSWORD}@postgres-db:5432/soccer_quiz?schema=public"
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - postgres-db
     networks:
-      - backend-network
+      - soccer_quiz_net
 
-  question-service:
-    build: backend/question-service
-    container_name: question-service
-    restart: always
+  quiz-service:
+    build: ./backend/quiz-service
+    container_name: quiz-service
     ports:
-      - "3004:3004"
-    depends_on:
-      - mongodb
-      - rabbitmq
+      - "3003:3000"
     environment:
-      MONGO_URL: mongodb://mongodb:27017/question_db
-      RABBITMQ_URL: amqp://rabbitmq:5672
-    networks:
-      - backend-network
-
-  answer-service:
-    build: backend/answer-service
-    container_name: answer-service
-    restart: always
-    ports:
-      - "3005:3005"
+      MONGO_URI: "mongodb://root:${MONGO_INITDB_ROOT_PASSWORD}@mongo-db:27017/soccer_quiz?authSource=admin"
     depends_on:
-      - mongodb
-      - rabbitmq
-    environment:
-      MONGO_URL: mongodb://mongodb:27017/answer_db
-      RABBITMQ_URL: amqp://rabbitmq:5672
+      - mongo-db
     networks:
-      - backend-network
+      - soccer_quiz_net
 
-# ======================
-#  Volumes persistentes
-# ======================
 volumes:
   postgres_data:
   mongo_data:
 
-# ======================
-# Rede interna
-# ======================
 networks:
-  backend-network:
+  soccer_quiz_net:
     driver: bridge

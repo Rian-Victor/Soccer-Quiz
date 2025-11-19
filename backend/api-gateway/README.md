@@ -23,7 +23,39 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+API Gateway para o Soccer Quiz - gerencia e roteia requisições do React Native para os microsserviços (auth-service, user-service, quiz-service).
+
+Este gateway atua como ponto de entrada único para todas as requisições da interface de usuário, encaminhando-as para os microsserviços apropriados.
+
+## Rotas do Gateway
+
+O gateway roteia as requisições com base no prefixo da URL:
+
+- `/api/auth/*` → `auth-service` (autenticação e autorização)
+- `/api/users/*` ou `/api/user/*` → `user-service` (gerenciamento de usuários)
+- `/api/quiz/*` → `quiz-service` (quizzes e questões)
+
+### Exemplos de uso:
+
+```
+POST /api/auth/login          → http://auth-service:3000/login
+GET  /api/users/1             → http://user-service:3000/1
+POST /api/quiz/create         → http://quiz-service:3000/create
+```
+
+## Variáveis de Ambiente
+
+O gateway utiliza as seguintes variáveis de ambiente (definidas no docker-compose.yml):
+
+- `AUTH_SERVICE_URL`: URL do auth-service (padrão: `http://auth-service:3000`)
+- `USER_SERVICE_URL`: URL do user-service (padrão: `http://user-service:3000`)
+- `QUIZ_SERVICE_URL`: URL do quiz-service (padrão: `http://quiz-service:3000`)
+- `JWT_SECRET`: Chave secreta para JWT (compartilhada com auth-service)
+- `PORT`: Porta do gateway (padrão: `3000`)
+
+## CORS
+
+O gateway está configurado para aceitar requisições do React Native, permitindo todas as origens em desenvolvimento. Para produção, recomenda-se configurar origens específicas.
 
 ## Project setup
 
