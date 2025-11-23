@@ -1,0 +1,254 @@
+# ===========================================
+# Python
+# ===========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ===========================================
+# Virtual Environments
+# ===========================================
+venv/
+ENV/
+env/
+.venv
+virtualenv/
+.virtualenv
+
+# ===========================================
+# Node.js / React Native / Expo
+# ===========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+expo-env.d.ts
+
+# Metro
+.metro-health-check*
+
+# React Native
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.kotlin/
+
+# TypeScript
+*.tsbuildinfo
+
+# ===========================================
+# IDEs and Editors
+# ===========================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# IntelliJ IDEA / PyCharm / WebStorm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ===========================================
+# Environment Variables
+# ===========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+*.env
+
+# ===========================================
+# Logs
+# ===========================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ===========================================
+# Operating System
+# ===========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===========================================
+# Docker
+# ===========================================
+.dockerignore
+docker-compose.override.yml
+*.dockerignore
+
+# ===========================================
+# Build and Distribution
+# ===========================================
+build/
+dist/
+*.tar.gz
+*.zip
+*.rar
+
+# ===========================================
+# Testing
+# ===========================================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# ===========================================
+# Database
+# ===========================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ===========================================
+# Temporary Files
+# ===========================================
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+
+# ===========================================
+# Application Specific
+# ===========================================
+# React Native generated folders
+ios/
+android/
+.expo/
+
+# Generated native folders
+/ios
+/android
+
+# Expo
+app-example
+
+# ===========================================
+# Security and Secrets
+# ===========================================
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+.secrets
+
