@@ -1,0 +1,42 @@
+"""
+Configurações do Auth Service
+"""
+from pydantic_settings import BaseSettings
+from functools import lru_cache
+
+
+class Settings(BaseSettings):
+    """Configurações da aplicação"""
+    
+    # Porta do serviço
+    PORT: int = 3000
+    
+    # Modo debug
+    DEBUG: bool = True
+    
+    # JWT Config
+    JWT_SECRET: str = "default-secret-change-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    
+    # Database - Azure SQL Database ou SQL Server local
+    # Formato: mssql+pyodbc://username:password@server:port/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no
+    DATABASE_URL: str = "mssql+pyodbc://username:password@your-server.database.windows.net:1433/your-database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no"
+    
+    # User Service URL (para buscar dados do usuário)
+    USER_SERVICE_URL: str = "http://user-service:3000"
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    """Retorna instância singleton das configurações"""
+    return Settings()
+
+
+settings = get_settings()
+

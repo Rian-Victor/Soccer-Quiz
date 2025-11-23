@@ -1,0 +1,123 @@
+version: "3.8"
+
+services:
+  # Nota: PostgreSQL foi removido. Os serviços agora usam Azure SQL Database ou SQL Server.
+  # Configure DATABASE_URL nos arquivos .env dos serviços para apontar para seu SQL Server.
+
+  # MongoDB para quiz-service
+  mongodb:
+    image: mongo:7
+    container_name: soccer-quiz-mongodb
+    environment:
+      MONGO_INITDB_DATABASE: soccer_quiz
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - soccer-quiz-network
+
+  # User Service
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: soccer-quiz-user-service
+    environment:
+      PORT: 3000
+      DEBUG: "true"
+      # Configure DATABASE_URL para apontar para seu Azure SQL Database
+      # Formato: mssql+pyodbc://username:password@server.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no
+      DATABASE_URL: ${USER_SERVICE_DATABASE_URL:-mssql+pyodbc://username:password@soccer-quiz.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no}
+    ports:
+      - "3001:3000"
+    networks:
+      - soccer-quiz-network
+    restart: unless-stopped
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: soccer-quiz-auth-service
+    environment:
+      PORT: 3000
+      DEBUG: "true"
+      JWT_SECRET: ${JWT_SECRET:-default-secret-change-in-production}
+      JWT_ALGORITHM: HS256
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: 7
+      # Configure DATABASE_URL para apontar para seu Azure SQL Database
+      # Formato: mssql+pyodbc://username:password@server.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no
+      DATABASE_URL: ${AUTH_SERVICE_DATABASE_URL:-mssql+pyodbc://username:password@server.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no}
+      USER_SERVICE_URL: http://user-service:3000
+    ports:
+      - "3002:3000"
+    depends_on:
+      user-service:
+        condition: service_started
+    networks:
+      - soccer-quiz-network
+    restart: unless-stopped
+
+  # Quiz Service
+  quiz-service:
+    build:
+      context: ./quiz-service
+      dockerfile: Dockerfile
+    container_name: soccer-quiz-quiz-service
+    environment:
+      PORT: 3000
+      DEBUG: "true"
+      MONGODB_URL: mongodb://mongodb:27017
+      MONGODB_DB: soccer_quiz
+    ports:
+      - "3003:3000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - soccer-quiz-network
+    restart: unless-stopped
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: soccer-quiz-api-gateway
+    environment:
+      PORT: 3000
+      DEBUG: "true"
+      JWT_SECRET: ${JWT_SECRET:-default-secret-change-in-production}
+      JWT_ALGORITHM: HS256
+      AUTH_SERVICE_URL: http://auth-service:3000
+      USER_SERVICE_URL: http://user-service:3000
+      QUIZ_SERVICE_URL: http://quiz-service:3000
+      CASBIN_MODEL_PATH: app/casbin/rbac_model.conf
+      CASBIN_POLICY_PATH: app/casbin/policy.csv
+    ports:
+      - "3000:3000"
+    depends_on:
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+      quiz-service:
+        condition: service_started
+    networks:
+      - soccer-quiz-network
+    restart: unless-stopped
+
+volumes:
+  mongodb-data:
+
+networks:
+  soccer-quiz-network:
+    driver: bridge
