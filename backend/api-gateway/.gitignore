@@ -26,6 +26,11 @@ venv/
 ENV/
 env/
 .venv
+.venv/bin
+.env/bin
+
+# PyInstaller
+#  
 
 # IDEs
 .vscode/
