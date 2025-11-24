@@ -16,8 +16,8 @@ from app.config import settings
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print(f"🚀 API Gateway iniciado na porta {settings.PORT}")
-    print(f"📚 Documentação disponível em: http://localhost:{settings.PORT}/docs")
+    print(f"API Gateway iniciado na porta {settings.PORT}")
+    print(f"Documentação disponível em: http://localhost:{settings.PORT}/docs")
     yield
     # Shutdown
     print("API Gateway encerrado")
