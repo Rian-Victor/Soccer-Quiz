@@ -1,0 +1,40 @@
+# Políticas de Acesso - Admin
+# Usuários admin têm acesso completo a todos os recursos
+p, admin, /api/users, POST
+p, admin, /api/users, GET
+p, admin, /api/users/*, GET
+p, admin, /api/users/*, PATCH
+p, admin, /api/users/*, DELETE
+p, admin, /api/teams, POST
+p, admin, /api/teams, GET
+p, admin, /api/teams/*, GET
+p, admin, /api/teams/*, PATCH
+p, admin, /api/teams/*, DELETE
+p, admin, /api/questions, POST
+p, admin, /api/questions, GET
+p, admin, /api/questions/*, GET
+p, admin, /api/questions/*, PATCH
+p, admin, /api/questions/*, DELETE
+p, admin, /api/answers, POST
+p, admin, /api/answers, GET
+p, admin, /api/answers/*, GET
+p, admin, /api/answers/*, PATCH
+p, admin, /api/answers/*, DELETE
+
+# Políticas de Acesso - Usuários Comuns
+# Usuários comuns podem fazer login, logout, refresh token
+p, comum, /api/auth/login, POST
+p, comum, /api/auth/logout, POST
+p, comum, /api/auth/refresh, POST
+
+# Usuários comuns podem ler (GET) recursos de quiz para jogar
+p, comum, /api/teams, GET
+p, comum, /api/teams/*, GET
+p, comum, /api/questions, GET
+p, comum, /api/questions/*, GET
+p, comum, /api/answers, GET
+p, comum, /api/answers/*, GET
+
+# Usuários comuns podem ver seu próprio perfil
+p, comum, /api/users/*, GET
+
