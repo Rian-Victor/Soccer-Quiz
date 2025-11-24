@@ -14,14 +14,20 @@ from app.config import settings
 
 
 # Lista de rotas públicas que não precisam de autenticação
+# IMPORTANTE: Não incluir "/" ou "/health" aqui pois estão em EXACT_PUBLIC_ROUTES
 PUBLIC_ROUTES = [
     "/api/auth/login",
     "/api/auth/logout",
-    "/",
-    "/health",
+    "/api/auth/refresh",
     "/docs",
     "/openapi.json",
     "/redoc",
+]
+
+# Rotas que são públicas mas precisam de verificação exata (não startswith)
+EXACT_PUBLIC_ROUTES = [
+    "/",
+    "/health",
 ]
 
 
@@ -81,13 +87,18 @@ class JwtAuthMiddleware(BaseHTTPMiddleware):
     
     def _is_public_route(self, path: str) -> bool:
         """Verifica se a rota é pública"""
-        # Verificar rotas exatas
+        # Verificar rotas exatas primeiro (inclui "/" e "/health")
+        if path in EXACT_PUBLIC_ROUTES:
+            return True
+        
+        # Verificar rotas exatas da lista principal
         if path in PUBLIC_ROUTES:
             return True
         
-        # Verificar se começa com alguma rota pública
+        # Verificar se começa com alguma rota pública (mas não "/" que já foi tratado)
+        # Isso permite /api/auth/login, /api/auth/logout, /api/auth/refresh, /docs, etc.
         for public_route in PUBLIC_ROUTES:
-            if path.startswith(public_route):
+            if public_route != "/" and path.startswith(public_route):
                 return True
         
         return False

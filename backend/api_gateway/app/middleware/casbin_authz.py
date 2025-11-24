@@ -40,16 +40,23 @@ class CasbinAuthzMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         
         # Rotas públicas não precisam de autorização
-        public_routes = ["/", "/health", "/docs", "/openapi.json", "/redoc"]
-        if any(path.startswith(route) for route in public_routes):
+        # Usar verificação exata para "/" e "/health" para evitar marcar todas as rotas como públicas
+        exact_public = ["/", "/health"]
+        if path in exact_public:
+            return await call_next(request)
+        
+        # Rotas de documentação também são públicas
+        if any(path.startswith(route) for route in ["/docs", "/openapi.json", "/redoc"]):
             return await call_next(request)
         
         # Se não tem role (usuário não autenticado), bloquear
+        # IMPORTANTE: Isso só acontece se o JWT middleware não validou o token
+        # O JWT middleware deve ter retornado 401 antes, mas garantimos aqui também
         user_role = getattr(request.state, "user_role", None)
         if not user_role:
             return JSONResponse(
-                status_code=status.HTTP_403_FORBIDDEN,
-                content={"detail": "Acesso negado: autenticação necessária"}
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Acesso negado: autenticação necessária. Token JWT não fornecido ou inválido."}
             )
         
         # Normalizar path (remover query params)

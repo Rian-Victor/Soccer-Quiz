@@ -1,8 +1,32 @@
 version: "3.8"
 
 services:
-  # Nota: PostgreSQL foi removido. Os serviços agora usam Azure SQL Database ou SQL Server.
-  # Configure DATABASE_URL nos arquivos .env dos serviços para apontar para seu SQL Server.
+  # SQL Server para auth-service e user-service (desenvolvimento local)
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: soccer-quiz-mssql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd}
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      # Nota: O healthcheck usa a senha padrão. Se MSSQL_SA_PASSWORD for diferente, ajuste aqui
+      test:
+        [
+          "CMD-SHELL",
+          '/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -Q ''SELECT 1'' || exit 1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - soccer-quiz-network
+    restart: unless-stopped
 
   # MongoDB para quiz-service
   mongodb:
@@ -31,11 +55,15 @@ services:
     environment:
       PORT: 3000
       DEBUG: "true"
-      # Configure DATABASE_URL para apontar para seu Azure SQL Database
-      # Formato: mssql+pyodbc://username:password@server.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no
-      DATABASE_URL: ${USER_SERVICE_DATABASE_URL:-mssql+pyodbc://username:password@soccer-quiz.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no}
+      # DATABASE_URL deve ser configurada no arquivo .env
+      # Para desenvolvimento local (Docker): mssql+pyodbc://sa:${MSSQL_SA_PASSWORD}@mssql:1433/quizdb?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=no
+      # Para produção (Azure): mssql+pyodbc://admin-quiz:${MSSQL_ADMIN_PASSWORD}@soccer-quiz.database.windows.net:1433/quizdb?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no&loginTimeout=30
+      DATABASE_URL: ${USER_SERVICE_DATABASE_URL}
     ports:
       - "3001:3000"
+    depends_on:
+      mssql:
+        condition: service_healthy
     networks:
       - soccer-quiz-network
     restart: unless-stopped
@@ -53,13 +81,16 @@ services:
       JWT_ALGORITHM: HS256
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 30
       JWT_REFRESH_TOKEN_EXPIRE_DAYS: 7
-      # Configure DATABASE_URL para apontar para seu Azure SQL Database
-      # Formato: mssql+pyodbc://username:password@server.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no
-      DATABASE_URL: ${AUTH_SERVICE_DATABASE_URL:-mssql+pyodbc://username:password@server.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no}
+      # DATABASE_URL deve ser configurada no arquivo .env
+      # Para desenvolvimento local (Docker): mssql+pyodbc://sa:${MSSQL_SA_PASSWORD}@mssql:1433/quizdb?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=no
+      # Para produção (Azure): mssql+pyodbc://admin-quiz:${MSSQL_ADMIN_PASSWORD}@soccer-quiz.database.windows.net:1433/quizdb?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no&loginTimeout=30
+      DATABASE_URL: ${AUTH_SERVICE_DATABASE_URL}
       USER_SERVICE_URL: http://user-service:3000
     ports:
       - "3002:3000"
     depends_on:
+      mssql:
+        condition: service_healthy
       user-service:
         condition: service_started
     networks:
@@ -89,7 +120,7 @@ services:
   # API Gateway
   api-gateway:
     build:
-      context: ./api-gateway
+      context: ./api_gateway
       dockerfile: Dockerfile
     container_name: soccer-quiz-api-gateway
     environment:
@@ -117,6 +148,7 @@ services:
 
 volumes:
   mongodb-data:
+  mssql-data:
 
 networks:
   soccer-quiz-network:

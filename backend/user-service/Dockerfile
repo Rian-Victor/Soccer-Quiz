@@ -22,8 +22,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código da aplicação
 COPY . .
 
-# Expor porta
-EXPOSE 3004
+# Copiar e tornar executável o script de entrada
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
-# Comando para rodar a aplicação
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3004"]
+# Expor porta (padrão 3000, será sobrescrita pela variável PORT no runtime)
+EXPOSE 3000
+
+# Usar script de entrada que lê PORT do ambiente
+ENTRYPOINT ["/docker-entrypoint.sh"]
