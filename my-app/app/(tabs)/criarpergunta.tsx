@@ -80,9 +80,9 @@ export default function CreateQuestions() {
                 difficulty: "medium"
             };
 
-            console.log("📝 Criando pergunta...");
+            console.log("Criando pergunta...");
             const createdQuestion = await questionService.createQuestion(questionData);
-            console.log("✅ Pergunta criada:", createdQuestion.id);
+            console.log("Pergunta criada:", createdQuestion.id);
 
             const answerData: AnswerCreate = {
                 questionId: createdQuestion.id, 
@@ -90,9 +90,9 @@ export default function CreateQuestions() {
                 correct: true
             };
 
-            console.log("📤 Enviando resposta...");
+            console.log("Enviando resposta...");
             await answerService.createAnswer(answerData);
-            console.log("✅ Resposta criada com sucesso!");
+            console.log("Resposta criada com sucesso!");
 
             await loadQuestions();
             setNewQuestion({ question: "", answer: "" });
@@ -101,7 +101,7 @@ export default function CreateQuestions() {
             Alert.alert("Sucesso", "Pergunta e resposta criadas com sucesso!");
 
         } catch (error: any) {
-            console.error("💥 Erro:", error);
+            console.error("Erro:", error);
             Alert.alert("Erro", error.message);
         } finally {
             setLoading(false);
