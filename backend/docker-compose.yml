@@ -33,7 +33,7 @@ services:
       DEBUG: "true"
       # Configure DATABASE_URL para apontar para seu Azure SQL Database
       # Formato: mssql+pyodbc://username:password@server.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no
-      DATABASE_URL: ${USER_SERVICE_DATABASE_URL:-mssql+pyodbc://username:password@soccer-quiz.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no}
+      DATABASE_URL: "mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:1433/${DB_NAME}?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no&Connection Timeout=30"
     ports:
       - "3001:3000"
     networks:
@@ -55,7 +55,7 @@ services:
       JWT_REFRESH_TOKEN_EXPIRE_DAYS: 7
       # Configure DATABASE_URL para apontar para seu Azure SQL Database
       # Formato: mssql+pyodbc://username:password@server.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no
-      DATABASE_URL: ${AUTH_SERVICE_DATABASE_URL:-mssql+pyodbc://username:password@server.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no}
+      DATABASE_URL: "mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:1433/${DB_NAME}?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no&Connection Timeout=30"
       USER_SERVICE_URL: http://user-service:3000
     ports:
       - "3002:3000"
