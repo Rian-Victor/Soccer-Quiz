@@ -3,11 +3,13 @@
 ## URLs de Produção (Azure App Service)
 
 ### API Gateway (Produção)
+
 - **URL**: `https://quiz-service-f5e0h5ctgna2c5a6.canadacentral-01.azurewebsites.net`
 - **Região**: Canada Central (canadacentral-01)
 - **Base URL**: `https://quiz-service-f5e0h5ctgna2c5a6.canadacentral-01.azurewebsites.net/api`
 
 ### Documentação Swagger (Produção)
+
 - **Swagger UI**: `https://quiz-service-f5e0h5ctgna2c5a6.canadacentral-01.azurewebsites.net/docs`
 - **ReDoc**: `https://quiz-service-f5e0h5ctgna2c5a6.canadacentral-01.azurewebsites.net/redoc`
 
@@ -20,8 +22,8 @@ Para conectar o frontend React Native à API de produção, configure a URL base
 ```typescript
 // my-app/config/api.ts ou similar
 const API_BASE_URL = __DEV__
-  ? 'http://localhost:3000/api'  // Desenvolvimento local
-  : 'https://quiz-service-f5e0h5ctgna2c5a6.canadacentral-01.azurewebsites.net/api'; // Produção
+  ? "http://localhost:3000/api" // Desenvolvimento local
+  : "https://quiz-service-f5e0h5ctgna2c5a6.canadacentral-01.azurewebsites.net/api"; // Produção
 
 export default API_BASE_URL;
 ```
@@ -30,14 +32,14 @@ export default API_BASE_URL;
 
 ```typescript
 // my-app/app/login.tsx
-import axios from 'axios';
-import { API_BASE_URL } from '../config/api';
+import axios from "axios";
+import { API_BASE_URL } from "../config/api";
 
 const handleLogin = async (email: string, password: string) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/auth/login`, {
       email,
-      password
+      password,
     });
     // ... resto do código
   } catch (error) {
@@ -53,6 +55,7 @@ const handleLogin = async (email: string, password: string) => {
 Configure as seguintes variáveis de ambiente no Azure App Service:
 
 #### API Gateway:
+
 ```env
 PORT=80
 DEBUG=false
@@ -66,6 +69,7 @@ CASBIN_POLICY_PATH=app/casbin/policy.csv
 ```
 
 #### Auth Service:
+
 ```env
 PORT=80
 DEBUG=false
@@ -78,6 +82,7 @@ USER_SERVICE_URL=https://user-service-url.azurewebsites.net
 ```
 
 #### User Service:
+
 ```env
 PORT=80
 DEBUG=false
@@ -85,6 +90,7 @@ DATABASE_URL=mssql+pyodbc://username:password@server.database.windows.net:1433/d
 ```
 
 #### Quiz Service:
+
 ```env
 PORT=80
 DEBUG=false
@@ -142,15 +148,15 @@ Configure monitoramento no Azure:
 
 ## Segurança em Produção
 
-⚠️ **Importante:**
+**Importante:**
 
-1. ✅ Use `JWT_SECRET` forte e único
-2. ✅ Configure `DEBUG=false` em produção
-3. ✅ Use HTTPS em todas as conexões
-4. ✅ Configure firewall do Azure SQL Database
-5. ✅ Use variáveis de ambiente no Azure App Service (não commite `.env`)
-6. ✅ Configure CORS restritivo
-7. ✅ Use Azure Key Vault para secrets sensíveis
+1. Use `JWT_SECRET` forte e único
+2. Configure `DEBUG=false` em produção
+3. Use HTTPS em todas as conexões
+4. Configure firewall do Azure SQL Database
+5. Use variáveis de ambiente no Azure App Service (não commite `.env`)
+6. Configure CORS restritivo
+7. Use Azure Key Vault para secrets sensíveis
 
 ## Deploy
 
@@ -191,4 +197,3 @@ curl https://quiz-service-f5e0h5ctgna2c5a6.canadacentral-01.azurewebsites.net/he
 - [Azure App Service Documentation](https://docs.microsoft.com/azure/app-service/)
 - [FastAPI Deployment](https://fastapi.tiangolo.com/deployment/)
 - [Azure SQL Database](https://docs.microsoft.com/azure/sql-database/)
-

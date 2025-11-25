@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://192.168.0.106:3003";
+const API_BASE_URL = "http://172.20.10.6:3003";
 
 export interface QuestionCreate {
   statement: string;
@@ -63,11 +63,11 @@ export const answerService = {
       body: JSON.stringify(answerData),
     });
 
-    console.log("📥 Status:", response.status);
+    console.log("Status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ Erro:", errorText);
+      console.error("Erro:", errorText);
       throw new Error(
         `Erro ao criar resposta: ${response.status} - ${errorText}`
       );

@@ -45,11 +45,11 @@ export const authService = {
       body: JSON.stringify(loginData),
     });
 
-    console.log("📥 Status:", response.status);
+    console.log("Status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ Erro:", errorText);
+      console.error("Erro:", errorText);
       throw new Error(`Erro ao fazer login: ${response.status} - ${errorText}`);
     }
 
@@ -67,11 +67,11 @@ export const authService = {
       body: JSON.stringify(logoutData),
     });
 
-    console.log("📥 Status:", response.status);
+    console.log("Status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ Erro:", errorText);
+      console.error("Erro:", errorText);
       throw new Error(`Erro ao fazer logout: ${response.status} - ${errorText}`);
     }
 
@@ -91,11 +91,11 @@ export const authService = {
       body: JSON.stringify(refreshData),
     });
 
-    console.log("📥 Status:", response.status);
+    console.log("Status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ Erro:", errorText);
+      console.error("Erro:", errorText);
       throw new Error(
         `Erro ao renovar token: ${response.status} - ${errorText}`
       );

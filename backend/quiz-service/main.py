@@ -16,11 +16,11 @@ from app.database import init_db
 async def lifespan(app: FastAPI):
     # Startup - Inicializar conexão com MongoDB
     await init_db()
-    print(f"🚀 Quiz Service iniciado na porta {settings.PORT}")
-    print(f"📚 Documentação disponível em: http://localhost:{settings.PORT}/docs")
+    print(f"Quiz Service iniciado na porta {settings.PORT}")
+    print(f"Documentação disponível em: http://localhost:{settings.PORT}/docs")
     yield
     # Shutdown
-    print("🛑 Quiz Service encerrado")
+    print("Quiz Service encerrado")
 
 
 app = FastAPI(
@@ -48,7 +48,7 @@ app.include_router(answers.router, prefix="/answers", tags=["answers"])
 @app.get("/", tags=["health"])
 async def root():
     """Health check endpoint"""
-    print("✅ Rota / foi acessada!")
+    print("Rota / foi acessada!")
     return {"service": "quiz-service", "status": "running", "version": "1.0.0"}
 
 
