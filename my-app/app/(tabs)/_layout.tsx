@@ -53,13 +53,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     alignItems: "center",
     height: 72,
-    backgroundColor: "#24BF94",     // → COR SÓLIDA (sem gradiente)
+    backgroundColor: "#24BF94",     
     marginHorizontal: 0,
     paddingHorizontal: 5,
     marginBottom: 0,
     paddingBottom: 20,
-    elevation: 0,                   // sombra Android
-    shadowColor: "#000",            // sombra iOS
+    elevation: 0,                   
+    shadowColor: "#000",            
     shadowOpacity: 0.1,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 3 },
