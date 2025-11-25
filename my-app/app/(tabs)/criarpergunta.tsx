@@ -1,17 +1,20 @@
 import { StyleSheet, View, Image, Text, TouchableOpacity, ScrollView, TextInput, Modal, Alert } from "react-native";
 import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { questionService, QuestionCreate, QuestionResponse } from "../../services/quizApi";
+import { questionService, QuestionCreate, QuestionResponse, answerService, AnswerCreate } from "../../services/quizApi";
+
+interface QuestionWithAnswer extends QuestionResponse {
+    correctAnswer: string;
+}
 
 export default function CreateQuestions() {
-    const [questions, setQuestions] = useState<QuestionResponse[]>([]);
+    const [questions, setQuestions] = useState<QuestionWithAnswer[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [newQuestion, setNewQuestion] = useState({
         question: "",
         answer: ""
     });
     const [loading, setLoading] = useState(false);
-
     const router = useRouter();
     const params = useLocalSearchParams();
     const selectedCategory = params.category as string || "Futebol";
@@ -24,7 +27,27 @@ export default function CreateQuestions() {
         try {
             setLoading(true);
             const existingQuestions = await questionService.getQuestions();
-            setQuestions(existingQuestions);
+
+            const questionsWithAnswers = await Promise.all(
+                existingQuestions.map(async (question) => {
+                    try {
+                        const answers = await answerService.getAnswersByQuestion(question.id);
+                        const correctAnswer = answers.find(answer => answer.correct)?.text || ""; 
+                        return {
+                            ...question,
+                            correctAnswer
+                        } as QuestionWithAnswer;
+                    } catch (error) {
+                        console.error(`Erro ao carregar respostas da pergunta ${question.id}:`, error);
+                        return {
+                            ...question,
+                            correctAnswer: ""
+                        } as QuestionWithAnswer;
+                    }
+                })
+            );
+
+            setQuestions(questionsWithAnswers);
         } catch (error) {
             console.error("Erro ao carregar perguntas:", error);
             Alert.alert("Erro", "Não foi possível carregar as perguntas existentes");
@@ -49,31 +72,40 @@ export default function CreateQuestions() {
 
         try {
             setLoading(true);
-            
+
+            // 1. Criar pergunta
             const questionData: QuestionCreate = {
                 statement: newQuestion.question,
-                topic: selectedCategory, 
+                topic: selectedCategory,
                 difficulty: "medium"
             };
 
+            console.log("📝 Criando pergunta...");
             const createdQuestion = await questionService.createQuestion(questionData);
-            
-            setQuestions(prev => [...prev, createdQuestion]);
+            console.log("✅ Pergunta criada:", createdQuestion.id);
+
+            const answerData: AnswerCreate = {
+                questionId: createdQuestion.id, 
+                text: newQuestion.answer,
+                correct: true
+            };
+
+            console.log("📤 Enviando resposta...");
+            await answerService.createAnswer(answerData);
+            console.log("✅ Resposta criada com sucesso!");
+
+            await loadQuestions();
             setNewQuestion({ question: "", answer: "" });
             setModalVisible(false);
-            
-            Alert.alert("Sucesso", "Pergunta criada com sucesso!");
-        } catch (error) {
-            console.error("Erro ao criar pergunta:", error);
-            Alert.alert("Erro", "Não foi possível criar a pergunta");
+
+            Alert.alert("Sucesso", "Pergunta e resposta criadas com sucesso!");
+
+        } catch (error: any) {
+            console.error("💥 Erro:", error);
+            Alert.alert("Erro", error.message);
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleCancelNewQuestion = () => {
-        setNewQuestion({ question: "", answer: "" });
-        setModalVisible(false);
     };
 
     const handleSaveAll = () => {
@@ -83,13 +115,11 @@ export default function CreateQuestions() {
 
     const updateQuestion = async (id: string, field: string, value: string) => {
         try {
-            const updateData = field === 'question' ? { statement: value } : {};
-            
-            if (Object.keys(updateData).length > 0) {
-                await questionService.updateQuestion(id, updateData);
-                
-                setQuestions(prev => 
-                    prev.map(q => q.id === id ? { ...q, [field]: value } : q)
+            if (field === 'statement') {
+                await questionService.updateQuestion(id, { statement: value });
+
+                setQuestions(prev =>
+                    prev.map(q => q.id === id ? { ...q, statement: value } : q)
                 );
             }
         } catch (error) {
@@ -138,15 +168,17 @@ export default function CreateQuestions() {
                                     Nenhuma pergunta criada ainda.{"\n"}
                                     Clique no + para adicionar a primeira pergunta!
                                 </Text>
+
                             </View>
                         ) : (
+
                             questions.map((item, index) => (
                                 <View key={item.id} style={styles.questionCard}>
                                     <View style={styles.questionHeader}>
                                         <Text style={styles.questionCategory}>{item.topic}</Text>
                                         <Text style={styles.questionNumber}>Pergunta {index + 1}</Text>
                                     </View>
-                                    
+
                                     <View style={styles.inputContainer}>
                                         <Text style={styles.inputLabel}>Pergunta</Text>
                                         <TextInput
@@ -158,24 +190,26 @@ export default function CreateQuestions() {
                                     </View>
 
                                     <View style={styles.inputContainer}>
-                                        <Text style={styles.inputLabel}>Dificuldade</Text>
-                                        <Text style={styles.difficultyText}>{item.difficulty}</Text>
+                                        <Text style={styles.inputLabel}>Resposta Correta</Text>
+                                        <Text style={styles.answerText}>{item.correctAnswer}</Text>
                                     </View>
                                 </View>
                             ))
+
                         )}
                     </View>
 
                     {questions.length > 0 && (
-                        <TouchableOpacity 
-                            style={styles.saveButton} 
+                        <TouchableOpacity
+                            style={[styles.saveButton, loading && { opacity: 0.5 }]}
                             onPress={handleSaveAll}
                             disabled={loading}
                         >
                             <Text style={styles.saveButtonText}>
-                                {loading ? "Salvando..." : "Salvar"}
+                                {loading ? "Salvando..." : "Salvar Todas"}
                             </Text>
                         </TouchableOpacity>
+
                     )}
 
                 </ScrollView>
@@ -186,20 +220,21 @@ export default function CreateQuestions() {
                 animationType="slide"
                 transparent={true}
                 visible={modalVisible}
-                onRequestClose={handleCancelNewQuestion}
+                onRequestClose={() => !loading && setModalVisible(false)}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Nova Pergunta - {selectedCategory}</Text>
-                        
+
                         <View style={styles.inputContainer}>
                             <Text style={styles.inputLabel}>Pergunta</Text>
                             <TextInput
                                 style={styles.textInput}
                                 value={newQuestion.question}
-                                onChangeText={(text) => setNewQuestion({...newQuestion, question: text})}
+                                onChangeText={(text) => setNewQuestion({ ...newQuestion, question: text })}
                                 placeholder="Digite a pergunta..."
                                 multiline
+                                editable={!loading}
                             />
                         </View>
 
@@ -208,22 +243,23 @@ export default function CreateQuestions() {
                             <TextInput
                                 style={styles.textInput}
                                 value={newQuestion.answer}
-                                onChangeText={(text) => setNewQuestion({...newQuestion, answer: text})}
+                                onChangeText={(text) => setNewQuestion({ ...newQuestion, answer: text })}
                                 placeholder="Digite a resposta..."
                                 multiline
+                                editable={!loading}
                             />
                         </View>
 
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity 
-                                style={[styles.modalButton, styles.cancelButton]} 
-                                onPress={handleCancelNewQuestion}
+                            <TouchableOpacity
+                                style={[styles.cancelButton, loading && { opacity: 0.5 }]}
+                                onPress={() => setModalVisible(false)}
                                 disabled={loading}
                             >
                                 <Text style={styles.cancelButtonText}>Cancelar</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity 
-                                style={[styles.modalButton, styles.confirmButton]} 
+                            <TouchableOpacity
+                                style={[styles.confirmButton, loading && { opacity: 0.5 }]}
                                 onPress={handleSaveNewQuestion}
                                 disabled={loading}
                             >
@@ -240,19 +276,7 @@ export default function CreateQuestions() {
     );
 }
 
-
 const styles = StyleSheet.create({
-    difficultyText: {
-        fontFamily: "Rubik",
-        fontSize: 14,
-        color: "#777",
-        padding: 12,
-        backgroundColor: "#F8F8F8",
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: "#E5E5E5",
-    },
-
     container: {
         flex: 1,
         backgroundColor: '#f1f1f1',
@@ -375,6 +399,17 @@ const styles = StyleSheet.create({
         color: "#777",
     },
 
+    answerText: {
+        fontFamily: "Rubik",
+        fontSize: 16,
+        color: "#333",
+        padding: 12,
+        backgroundColor: "#F8F8F8",
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#E5E5E5",
+    },
+
     inputContainer: {
         marginBottom: 15,
     },
@@ -446,31 +481,34 @@ const styles = StyleSheet.create({
     },
 
     modalButtons: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        flexDirection: "row",
+        justifyContent: "space-between",
         marginTop: 10,
     },
 
-    modalButton: {
-        flex: 1,
+    cancelButton: {
+        backgroundColor: '#ccc',
         borderRadius: 8,
         padding: 12,
         alignItems: 'center',
-        marginHorizontal: 5,
-    },
-
-    cancelButton: {
-        backgroundColor: '#f1f1f1',
-    },
-
-    confirmButton: {
-        backgroundColor: '#24bf94',
+        flex: 1,
+        marginRight: 10,
     },
 
     cancelButtonText: {
         fontFamily: "Rubik",
         fontSize: 16,
         color: '#333',
+        fontWeight: "500",
+    },
+
+    confirmButton: {
+        backgroundColor: '#24bf94',
+        borderRadius: 8,
+        padding: 12,
+        alignItems: 'center',
+        flex: 1,
+        marginLeft: 10,
     },
 
     confirmButtonText: {

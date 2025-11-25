@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://192.168.1.211:3000";
+const API_BASE_URL = "http://192.168.1.211:3003";
 
 export interface QuestionCreate {
     statement: string;
@@ -26,6 +26,53 @@ export interface TeamResponse {
     members: number[];
 }
 
+export interface AnswerCreate {
+    questionId: string;
+    text: string;
+    correct: boolean;
+}
+
+export interface AnswerResponse {
+    id: string;
+    questionId: string;
+    text: string;
+    correct: boolean;
+}
+
+export const answerService = {
+    async createAnswer(answerData: AnswerCreate): Promise<AnswerResponse> {
+        console.log("🔄 Criando resposta...");
+        
+        const response = await fetch(`${API_BASE_URL}/answers`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(answerData),
+        });
+
+        console.log("📥 Status:", response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("❌ Erro:", errorText);
+            throw new Error(`Erro ao criar resposta: ${response.status} - ${errorText}`);
+        }
+
+        return await response.json();
+    },
+
+    async getAnswersByQuestion(questionId: string): Promise<AnswerResponse[]> {
+        const response = await fetch(`${API_BASE_URL}/answers?question_id=${questionId}`);
+
+        if (!response.ok) {
+            throw new Error(`Erro ao buscar respostas: ${response.statusText}`);
+        }
+
+        return await response.json();
+    },
+};
+
 export const questionService = {
     async createQuestion(questionData: QuestionCreate): Promise<QuestionResponse> {
         const response = await fetch(`${API_BASE_URL}/questions`, {
@@ -37,7 +84,9 @@ export const questionService = {
         });
 
         if (!response.ok) {
-            throw new Error(`Erro ao criar pergunta: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error("Erro detalhado da API:", errorText);
+            throw new Error(`Erro ao criar pergunta: ${response.status} - ${errorText}`);
         }
 
         return await response.json();
