@@ -83,13 +83,13 @@ async def create_user(
             name=user_data.name,
             email=user_data.email,
             password=user_data.password,
-            role=role
+            role=role.value
         )
         return UserResponse(
             id=user.id,
             name=user.name,
             email=user.email,
-            role=user.role.value
+            role=user.role
         )
     except ValueError as e:
         raise HTTPException(
@@ -113,7 +113,7 @@ async def get_users(
             id=user.id,
             name=user.name,
             email=user.email,
-            role=user.role.value
+            role=user.role
         )
         for user in users
     ]
@@ -137,7 +137,7 @@ async def get_user(
         id=user.id,
         name=user.name,
         email=user.email,
-        role=user.role.value
+        role=user.role
     )
 
 
@@ -154,6 +154,7 @@ async def update_user(
         role = None
         if user_data.role:
             role = UserRole.ADMIN if user_data.role == UserRoleEnum.admin else UserRole.COMUM
+            role = role.value
         
         user = user_service.update_user(
             user_id=user_id,
@@ -173,7 +174,7 @@ async def update_user(
             id=user.id,
             name=user.name,
             email=user.email,
-            role=user.role.value
+            role=user.role
         )
     except ValueError as e:
         raise HTTPException(
@@ -221,6 +222,6 @@ async def get_user_by_email_internal(
         id=user.id,
         email=user.email,
         passwordHash=user.password_hash,
-        role=user.role.value
+        role=user.role
     )
 

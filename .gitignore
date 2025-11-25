@@ -2,6 +2,10 @@
 # Python
 # ===========================================
 __pycache__/
+.env
+database
+pycache/
+*.pyc
 *.py[cod]
 *$py.class
 *.so
