@@ -38,6 +38,18 @@ export interface AnswerResponse {
     text: string;
     correct: boolean;
 }
+export interface TeamCreate {
+    name: string;
+    country: string;
+    members: number[];
+}
+
+export interface TeamResponse {
+    id: string;
+    name: string;
+    country: string;
+    members: number[];
+}
 
 export const answerService = {
     async createAnswer(answerData: AnswerCreate): Promise<AnswerResponse> {
@@ -150,7 +162,8 @@ export const teamService = {
         });
 
         if (!response.ok) {
-            throw new Error(`Erro ao criar time: ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`Erro ao criar time: ${response.status} - ${errorText}`);
         }
 
         return await response.json();
@@ -173,13 +186,6 @@ export const teamService = {
             throw new Error(`Erro ao buscar time: ${response.statusText}`);
         }
 
-        return await response.json();
-    },
-};
-
-export const healthService = {
-    async checkHealth(): Promise<{ status: string }> {
-        const response = await fetch(`${API_BASE_URL}/health`);
         return await response.json();
     },
 };
