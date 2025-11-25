@@ -17,6 +17,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 class UserService:
     """Serviço para gerenciar usuários"""
     
+    # DIP: depende de IUserRepository para não acoplar diretamente à camada de persistência.
     def __init__(self, repository: IUserRepository):
         self.repository = repository
     

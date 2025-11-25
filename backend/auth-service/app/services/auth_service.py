@@ -18,6 +18,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 class AuthService:
     """Serviço para gerenciar autenticação"""
     
+    # DIP: recebe JwtService via construtor para depender apenas da abstração de geração de tokens.
     def __init__(self, jwt_service: JwtService):
         self.jwt_service = jwt_service
     

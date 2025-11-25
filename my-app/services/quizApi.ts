@@ -51,6 +51,8 @@ export interface TeamResponse {
   members: number[];
 }
 
+// SRP: answerService lida apenas com os endpoints de respostas.
+// OCP: novos comportamentos podem ser estendidos neste objeto sem alterar os consumidores existentes.
 export const answerService = {
   async createAnswer(answerData: AnswerCreate): Promise<AnswerResponse> {
     console.log("Criando resposta...");
@@ -89,6 +91,8 @@ export const answerService = {
   },
 };
 
+// SRP: questionService agrupa apenas a lógica de perguntas.
+// OCP: a interface permanece estável para os componentes, mesmo quando novos métodos são adicionados.
 export const questionService = {
   async createQuestion(
     questionData: QuestionCreate
@@ -167,6 +171,8 @@ export const questionService = {
   },
 };
 
+// SRP: teamService concentra as chamadas relacionadas a times.
+// OCP: permite incluir ações adicionais sem impactar quem consome o objeto hoje.
 export const teamService = {
   async createTeam(teamData: TeamCreate): Promise<TeamResponse> {
     const response = await fetch(`${API_BASE_URL}/teams`, {

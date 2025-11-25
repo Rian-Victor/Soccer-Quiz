@@ -10,10 +10,9 @@ from app.repositories.team_repository import TeamRepository
 from app.interfaces.repositories import ITeamRepository
 
 
+# ISP: este router atende só os endpoints de times, mantendo segregada a interface de perguntas e respostas.
 router = APIRouter()
 
-
-# Schemas Pydantic
 class TeamCreate(BaseModel):
     """Schema para criação de time"""
     name: str
@@ -40,6 +39,7 @@ class TeamResponse(BaseModel):
 
 
 # Dependência para obter repositório
+# DIP: expõe a abstração ITeamRepository para que o router não dependa da implementação concreta.
 def get_team_repository() -> ITeamRepository:
     """Dependência para obter repositório de times"""
     return TeamRepository()

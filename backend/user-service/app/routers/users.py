@@ -13,11 +13,11 @@ from app.models import User, UserRole
 from app.services.user_service import UserService
 from app.repositories.user_repository import UserRepository
 
-
+# ISP: este router expõe somente as rotas de usuários, mantendo as demais responsabilidades separadas.
 router = APIRouter()
 
 
-# Dependência para obter serviço de usuários
+# DIP: injetamos o repositório no serviço para manter o router dependente de abstrações.
 def get_user_service(db: Session = Depends(get_db)) -> UserService:
     """Dependência para obter serviço de usuários"""
     repository = UserRepository(db)

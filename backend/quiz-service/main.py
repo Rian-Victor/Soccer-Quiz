@@ -11,7 +11,7 @@ from app.config import settings
 from app.routers import teams, questions, answers
 from app.database import init_db
 
-
+# SRP: gerencia apenas o ciclo de vida do Quiz Service, sem misturar lógica de roteamento.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup - Inicializar conexão com MongoDB
