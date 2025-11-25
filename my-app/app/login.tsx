@@ -1,7 +1,54 @@
-import {StyleSheet, View, Image, Text, TextInput, TouchableOpacity} from "react-native";
-import { Link } from "expo-router";
+import {StyleSheet, View, Image, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert} from "react-native";
+import { Link, useRouter } from "expo-router";
+import { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { authService } from "../services/authApi";
 
 export default function Login(){
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const handleLogin = async () => {
+    // Validação básica
+    if (!email.trim() || !password.trim()) {
+      setError("Por favor, preencha todos os campos");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      console.log("Tentando fazer login...");
+      const response = await authService.login({
+        email: email.trim(),
+        password: password,
+      });
+
+      // Armazenar tokens e dados do usuário
+      await AsyncStorage.setItem("access_token", response.access_token);
+      await AsyncStorage.setItem("refresh_token", response.refresh_token);
+      await AsyncStorage.setItem("user_id", response.user_id.toString());
+      await AsyncStorage.setItem("user_role", response.role);
+      await AsyncStorage.setItem("expires_at", response.expires_at);
+
+      console.log("Login bem-sucedido! User ID:", response.user_id);
+      
+      // Navegar para a tela home
+      router.replace("/(tabs)/home");
+    } catch (err: any) {
+      console.error("Erro no login:", err);
+      const errorMessage = err.message || "Erro ao fazer login. Verifique suas credenciais.";
+      setError(errorMessage);
+      Alert.alert("Erro no Login", errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return(
     <View style={styles.container}>
       <View style={styles.content}>
@@ -14,7 +61,12 @@ export default function Login(){
                   <TextInput
                       style={styles.input}
                       placeholder="Digite seu e-mail"
-                      placeholderTextColor="#A9A9A9" 
+                      placeholderTextColor="#A9A9A9"
+                      value={email}
+                      onChangeText={setEmail}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      editable={!loading}
                   />
 
                   <Text style={styles.inputTitle}>Senha</Text>
@@ -23,11 +75,26 @@ export default function Login(){
                       placeholder="Digite sua senha"
                       placeholderTextColor="#A9A9A9" 
                       secureTextEntry
+                      value={password}
+                      onChangeText={setPassword}
+                      editable={!loading}
                   />
 
-                  <Link style={[styles.botao, {paddingTop: 15}]} href="../(tabs)/home">
+                  {error ? (
+                    <Text style={styles.errorText}>{error}</Text>
+                  ) : null}
+
+                  <TouchableOpacity 
+                    style={[styles.botao, {paddingTop: 15}, loading && styles.botaoDisabled]} 
+                    onPress={handleLogin}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
                       <Text style={styles.textoBotao}>Entrar</Text>
-                  </Link>
+                    )}
+                  </TouchableOpacity>
 
                   <Text style={[styles.inputTitle, {fontSize: 15, opacity: 0.8, textDecorationLine: "underline"}]}>Esqueceu a senha?</Text>
               </View>
@@ -135,6 +202,18 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
     fontSize: 17
+  },
+
+  botaoDisabled: {
+    opacity: 0.6
+  },
+
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    marginBottom: 10,
+    fontFamily: 'Poppins',
+    textAlign: 'center'
   }
 })
 
