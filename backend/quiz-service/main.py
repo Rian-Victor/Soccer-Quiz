@@ -48,6 +48,7 @@ app.include_router(answers.router, prefix="/answers", tags=["answers"])
 @app.get("/", tags=["health"])
 async def root():
     """Health check endpoint"""
+    print("✅ Rota / foi acessada!")
     return {"service": "quiz-service", "status": "running", "version": "1.0.0"}
 
 

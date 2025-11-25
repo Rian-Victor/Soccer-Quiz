@@ -1,6 +1,22 @@
 import { StyleSheet, View, Image, Text, TouchableOpacity, ScrollView } from "react-native";
+import { useRouter } from "expo-router";
 
 export default function MyQuizzes() {
+    const router = useRouter();
+
+    const quizzes = [
+        { id: "1", title: "Tipos de carros de jogadores", date: "15/06/2025", category: "Futebol" },
+        { id: "2", title: "Qual a comida favorita do Messi", date: "18/08/2025", category: "Futebol" },
+        { id: "3", title: "Como o Messi compra pão", date: "21/08/2025", category: "Futebol" },
+        { id: "4", title: "Se Cristiano Ronaldo fosse um ator, quem seria", date: "20/09/2025", category: "Futebol" },
+        { id: "5", title: "Quem são as mães dos jogadores famosos", date: "23/10/2025", category: "Futebol" },
+        { id: "6", title: "Quais desses jogadores é famoso", date: "25/10/2025", category: "Futebol" },
+    ];
+
+    const handleCreateQuiz = () => {
+        router.push("/(tabs)/criarquiz");
+    };
+
     return (
         <View style={styles.container}>
             <View style={styles.content}>
@@ -15,7 +31,7 @@ export default function MyQuizzes() {
 
                 <View style={styles.headerBar}>
                     <Text style={styles.subtitle}>Seus quizzes</Text>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={handleCreateQuiz}>
                         <Image 
                             source={require('../../assets/images/edit.png')} 
                             style={styles.editIcon}
@@ -25,55 +41,15 @@ export default function MyQuizzes() {
 
                 <ScrollView style={styles.scrollcontent}>
                     <View style={styles.quizList}>
-
-                        <View style={styles.quizCard}>
-                            <View style={styles.quizImg}></View>
-                            <View style={styles.quizInfo}>
-                                <Text style={styles.quizTitle}>Tipos de carros de jogadores</Text>
-                                <Text style={styles.quizDate}>15/06/2025</Text>
+                        {quizzes.map((quiz) => (
+                            <View key={quiz.id} style={styles.quizCard}>
+                                <View style={styles.quizImg}></View>
+                                <View style={styles.quizInfo}>
+                                    <Text style={styles.quizTitle}>{quiz.title}</Text>
+                                    <Text style={styles.quizDate}>{quiz.date}</Text>
+                                </View>
                             </View>
-                        </View>
-
-                        <View style={styles.quizCard}>
-                            <View style={styles.quizImg}></View>
-                            <View style={styles.quizInfo}>
-                                <Text style={styles.quizTitle}>Qual a comida favorita do Messi</Text>
-                                <Text style={styles.quizDate}>18/08/2025</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.quizCard}>
-                            <View style={styles.quizImg}></View>
-                            <View style={styles.quizInfo}>
-                                <Text style={styles.quizTitle}>Como o Messi compra pão</Text>
-                                <Text style={styles.quizDate}>21/08/2025</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.quizCard}>
-                            <View style={styles.quizImg}></View>
-                            <View style={styles.quizInfo}>
-                                <Text style={styles.quizTitle}>Se Cristiano Ronaldo fosse um ator, quem seria</Text>
-                                <Text style={styles.quizDate}>20/09/2025</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.quizCard}>
-                            <View style={styles.quizImg}></View>
-                            <View style={styles.quizInfo}>
-                                <Text style={styles.quizTitle}>Quem são as mães dos jogadores famosos</Text>
-                                <Text style={styles.quizDate}>23/10/2025</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.quizCard}>
-                            <View style={styles.quizImg}></View>
-                            <View style={styles.quizInfo}>
-                                <Text style={styles.quizTitle}>Quais desses jogadores é famoso</Text>
-                                <Text style={styles.quizDate}>25/10/2025</Text>
-                            </View>
-                        </View>
-
+                        ))}
                     </View>
                 </ScrollView>
 
@@ -124,13 +100,13 @@ const styles = StyleSheet.create({
 
     subtitle: {
         fontFamily: "Rubik",
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: 500,
     },
 
     editIcon: {
-        width: 22,
-        height: 22,
+        width: 25,
+        height: 25,
     },
 
     scrollcontent: {
