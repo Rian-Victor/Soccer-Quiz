@@ -62,7 +62,7 @@ class UserService:
             name=name,
             email=email,
             password_hash=password_hash,
-            role=role
+            role=role.value if hasattr(role, 'value') else role
         )
         
         return self.repository.create(user)
