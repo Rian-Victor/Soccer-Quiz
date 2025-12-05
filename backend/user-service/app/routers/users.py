@@ -21,7 +21,7 @@ router = APIRouter()
 def get_user_service(db: Session = Depends(get_db)) -> UserService:
     """Dependência para obter serviço de usuários"""
     repository = UserRepository(db)
-    return UserService(repository)
+    return UserService(repository, db)
 
 
 # Schemas Pydantic
@@ -225,3 +225,119 @@ async def get_user_by_email_internal(
         role=user.role
     )
 
+
+# ========== PASSWORD RESET ROUTES ==========
+
+class ForgotPasswordRequest(BaseModel):
+    """Schema para requisição de reset de senha"""
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Schema de resposta para requisição de reset"""
+    message: str
+    reset_url_template: str  # Template com placeholder {token}
+
+
+class ResetPasswordRequest(BaseModel):
+    """Schema para validação e reset de senha"""
+    token: str
+    new_password: str
+
+
+class ResetPasswordResponse(BaseModel):
+    """Schema de resposta para reset bem-sucedido"""
+    message: str
+    user_id: int
+
+
+@router.post("/password/forgot", response_model=ForgotPasswordResponse)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint públiCo - Inicia recuperação de senha
+    Gera token único de reset e envia email
+    
+    Não expõe se o email existe ou não (por segurança)
+    """
+    from app.repositories.user_repository import UserRepository
+    
+    repository = UserRepository(db)
+    service = UserService(repository, db)
+    
+    token_result = service.generate_reset_token(request.email)
+    
+    if token_result:
+        token, expires_at = token_result
+        # Enviar email (ou tentar usar notification-service)
+        reset_url_base = "https://app.example.com/reset-password"  # TODO: usar env var
+        await service.send_reset_email(request.email, token, reset_url_base)
+    
+    # Sempre responder sucesso (por segurança - não expõe se email existe)
+    return ForgotPasswordResponse(
+        message="Se o email existe na base, você receberá um link para redefinir a senha",
+        reset_url_template="https://app.example.com/reset-password?token={token}"  # TODO: usar env var
+    )
+
+
+@router.post("/password/reset", response_model=ResetPasswordResponse)
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint públiCo - Redefine a senha usando token
+    Token é único, de uso único, curto e expira em 15 minutos
+    """
+    from app.repositories.user_repository import UserRepository
+    
+    if len(request.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Senha deve ter no mínimo 8 caracteres"
+        )
+    
+    repository = UserRepository(db)
+    service = UserService(repository, db)
+    
+    user = service.reset_password(request.token, request.new_password)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido, expirado ou já utilizado"
+        )
+    
+    return ResetPasswordResponse(
+        message="Senha redefinida com sucesso",
+        user_id=user.id
+    )
+
+
+@router.get("/password/validate-token")
+async def validate_token(
+    token: str = Query(..., description="Token de reset a validar"),
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint públiCo - Valida um token de reset
+    Útil para verificar no front-end se o token é válido antes de exibir form
+    """
+    from app.repositories.user_repository import UserRepository
+    
+    repository = UserRepository(db)
+    service = UserService(repository, db)
+    
+    user = service.validate_reset_token(token)
+    
+    if not user:
+        return {"valid": False, "message": "Token inválido, expirado ou já utilizado"}
+    
+    return {
+        "valid": True,
+        "message": "Token válido",
+        "user_id": user.id,
+        "email": user.email
+    }
