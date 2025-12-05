@@ -17,6 +17,9 @@ from app.config import settings
 PUBLIC_ROUTES = [
     "/api/auth/login",
     "/api/auth/logout",
+    "/api/users/password/forgot",
+    "/api/users/password/reset",
+    "/api/users/password/validate-token",
     "/",
     "/health",
     "/docs",
