@@ -15,6 +15,35 @@ async def proxy_auth(path: str, request: Request):
     return await proxy_service.proxy_request("auth", path, request)
 
 
+# ========== PASSWORD RESET ROUTES (Public) ==========
+
+@router.post("/password/forgot")
+async def forgot_password(request: Request):
+    """
+    Inicia recuperação de senha
+    Roteia para user-service
+    """
+    return await proxy_service.proxy_request("user", "password/forgot", request)
+
+
+@router.post("/password/reset")
+async def reset_password(request: Request):
+    """
+    Redefine a senha usando token
+    Roteia para user-service
+    """
+    return await proxy_service.proxy_request("user", "password/reset", request)
+
+
+@router.get("/password/validate-token")
+async def validate_token(request: Request):
+    """
+    Valida um token de reset
+    Roteia para user-service
+    """
+    return await proxy_service.proxy_request("user", "password/validate-token", request)
+
+
 @router.api_route("/users/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 async def proxy_users(path: str, request: Request):
     """Roteia requisições para user-service"""
