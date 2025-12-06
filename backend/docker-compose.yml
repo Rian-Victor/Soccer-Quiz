@@ -34,8 +34,12 @@ services:
       # Configure DATABASE_URL para apontar para seu Azure SQL Database
       # Formato: mssql+pyodbc://username:password@server.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no
       DATABASE_URL: "mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:1433/${DB_NAME}?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no&Connection Timeout=30"
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     ports:
       - "3001:3000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - soccer-quiz-network
     restart: unless-stopped
@@ -111,6 +115,50 @@ services:
         condition: service_started
       quiz-service:
         condition: service_started
+    networks:
+      - soccer-quiz-network
+    restart: unless-stopped
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: soccer-quiz-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP port (produtores/consumidores)
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - soccer-quiz-network
+    restart: unless-stopped
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: soccer-quiz-notification-service
+    env_file:
+      - .env
+    environment:
+      PORT: 3000
+      DEBUG: "true"
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      RABBITMQ_QUEUE: password_reset_emails
+      RABBITMQ_EXCHANGE: notifications
+      RABBITMQ_ROUTING_KEY: email.password_reset
+      
+    ports:
+      - "3004:3000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - soccer-quiz-network
     restart: unless-stopped
