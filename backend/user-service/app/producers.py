@@ -2,6 +2,7 @@ import pika
 import json
 import logging
 from app.config import settings
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +17,12 @@ class RabbitMQProducer:
     def publish_password_reset(self, email: str, token: str):
         connection = None
         try:
-            # 1. Conecta (Bloqueante, mas rápido o suficiente para este caso)
+            # 1. Conecta 
             params = pika.URLParameters(self.url)
             connection = pika.BlockingConnection(params)
             channel = connection.channel()
 
-            # 2. Declara a Exchange (Segurança para garantir que existe)
+            # 2. Declara a Exchange 
             channel.exchange_declare(
                 exchange=self.exchange, 
                 exchange_type='direct', 
@@ -46,11 +47,49 @@ class RabbitMQProducer:
                 )
             )
             
-            logger.info(f"📤 Evento PASSWORD_RESET enviado para {email}")
 
         except Exception as e:
             logger.error(f"❌ Erro ao publicar no RabbitMQ: {e}")
             # Em produção, você poderia salvar numa tabela 'outbox' para tentar depois
+        finally:
+            if connection:
+                connection.close()
+    
+    # ... método publish_password_reset acima ...
+
+    def publish_user_registered(self, email: str, name: str):
+        """Publica evento de novo usuário registrado"""
+        connection = None
+        try:
+            params = pika.URLParameters(self.url)
+            connection = pika.BlockingConnection(params)
+            channel = connection.channel()
+
+            channel.exchange_declare(
+                exchange=self.exchange, 
+                exchange_type='direct', 
+                durable=True
+            )
+
+            message = {
+                "type": "USER_REGISTERED",  
+                "email": email,
+                "name": name,
+                "created_at": str(datetime.utcnow())
+            }
+            
+            channel.basic_publish(
+                exchange=self.exchange,
+                routing_key="user.registered",
+                body=json.dumps(message),
+                properties=pika.BasicProperties(
+                    delivery_mode=2,
+                    content_type='application/json'
+                )
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ Erro ao publicar user_registered: {e}")
         finally:
             if connection:
                 connection.close()

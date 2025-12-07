@@ -48,7 +48,27 @@ class UserService:
             password_hash=password_hash,
             role=role.value if hasattr(role, 'value') else role
         )
-        return self.repository.create(user)
+        created_user = self.repository.create(user)
+        print(f"DEBUG 1: Usuário {created_user.email} salvo no DB. Preparando envio...", flush=True)
+
+        try:
+            from app.config import settings
+            print(f"DEBUG 2: URL RabbitMQ usada: {settings.RABBITMQ_URL}", flush=True)
+
+            producer = RabbitMQProducer()
+            print("DEBUG 3: Producer instanciado. Tentando publicar...", flush=True)
+
+            producer.publish_user_registered(created_user.email, created_user.name)
+            print("DEBUG 4: MENSAGEM ENVIADA COM SUCESSO!", flush=True)
+
+        except Exception as e:
+            # Isso vai pegar qualquer erro de conexão ou código
+            print(f"DEBUG ERRO CRÍTICO: Ocorreu um erro ao enviar para o Rabbit: {e}", flush=True)
+            # Importante: Imprima o tipo do erro também
+            import traceback
+            traceback.print_exc()
+
+        return created_user
     
     def get_user_by_id(self, user_id: int) -> Optional[User]:
         return self.repository.get_by_id(user_id)
