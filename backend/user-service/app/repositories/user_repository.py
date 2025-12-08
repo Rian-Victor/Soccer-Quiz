@@ -4,7 +4,7 @@ Implementação concreta do repositório de usuários usando SQLAlchemy
 from typing import Optional, List
 from sqlalchemy.orm import Session
 
-from app.models import User
+from app.models import User, PasswordResetToken
 from app.interfaces.user_repository import IUserRepository
 
 
@@ -42,9 +42,19 @@ class UserRepository(IUserRepository):
     def delete(self, user_id: int) -> bool:
         """Deleta um usuário"""
         user = self.get_by_id(user_id)
-        if user:
+        if not user:
+            return False
+
+        try:
+            self.db.query(PasswordResetToken).filter(
+                PasswordResetToken.user_id == user_id
+            ).delete(synchronize_session=False)
+         
             self.db.delete(user)
+            
             self.db.commit()
             return True
-        return False
-
+        except Exception as e:
+            self.db.rollback()
+            print(f"❌ Erro ao deletar usuário: {e}")
+            raise e

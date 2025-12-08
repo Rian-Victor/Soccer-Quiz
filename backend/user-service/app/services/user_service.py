@@ -7,16 +7,18 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import secrets
-import httpx
+import logging
+import asyncio
 
 from app.models import User, UserRole, PasswordResetToken
 from app.interfaces.user_repository import IUserRepository
-from app.repositories.user_repository import UserRepository
+# 👇 Import correto do arquivo que acabamos de criar
+from app.producers import RabbitMQProducer 
 from app.config import settings
 
-# Contexto para hash de senha
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+logger = logging.getLogger(__name__)
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class UserService:
     """Serviço para gerenciar usuários"""
@@ -27,84 +29,57 @@ class UserService:
     
     @staticmethod
     def hash_password(password: str) -> str:
-        """Gera hash da senha usando bcrypt"""
         return pwd_context.hash(password)
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        """Verifica se a senha está correta"""
         return pwd_context.verify(plain_password, hashed_password)
     
-    def create_user(
-        self,
-        name: str,
-        email: str,
-        password: str,
-        role: UserRole = UserRole.COMUM
-    ) -> User:
-        """
-        Cria um novo usuário
-        
-        Args:
-            name: Nome do usuário
-            email: Email do usuário
-            password: Senha em texto plano
-            role: Role do usuário (admin/comum)
-            
-        Returns:
-            Usuário criado
-        """
-        # Verificar se o email já existe
+    def create_user(self, name: str, email: str, password: str, role: UserRole = UserRole.COMUM) -> User:
         existing_user = self.repository.get_by_email(email)
         if existing_user:
             raise ValueError(f"Email {email} já está em uso")
         
-        # Criar hash da senha
         password_hash = self.hash_password(password)
         
-        # Criar usuário
         user = User(
             name=name,
             email=email,
             password_hash=password_hash,
             role=role.value if hasattr(role, 'value') else role
         )
-        
-        return self.repository.create(user)
+        created_user = self.repository.create(user)
+        print(f"DEBUG 1: Usuário {created_user.email} salvo no DB. Preparando envio...", flush=True)
+
+        try:
+            from app.config import settings
+            print(f"DEBUG 2: URL RabbitMQ usada: {settings.RABBITMQ_URL}", flush=True)
+
+            producer = RabbitMQProducer()
+            print("DEBUG 3: Producer instanciado. Tentando publicar...", flush=True)
+
+            producer.publish_user_registered(created_user.email, created_user.name)
+            print("DEBUG 4: MENSAGEM ENVIADA COM SUCESSO!", flush=True)
+
+        except Exception as e:
+            # Isso vai pegar qualquer erro de conexão ou código
+            print(f"DEBUG ERRO CRÍTICO: Ocorreu um erro ao enviar para o Rabbit: {e}", flush=True)
+            # Importante: Imprima o tipo do erro também
+            import traceback
+            traceback.print_exc()
+
+        return created_user
     
     def get_user_by_id(self, user_id: int) -> Optional[User]:
-        """Busca usuário por ID"""
         return self.repository.get_by_id(user_id)
     
     def get_user_by_email(self, email: str) -> Optional[User]:
-        """Busca usuário por email"""
         return self.repository.get_by_email(email)
     
     def get_all_users(self, skip: int = 0, limit: int = 100) -> List[User]:
-        """Lista todos os usuários"""
         return self.repository.get_all(skip=skip, limit=limit)
     
-    def update_user(
-        self,
-        user_id: int,
-        name: Optional[str] = None,
-        email: Optional[str] = None,
-        password: Optional[str] = None,
-        role: Optional[UserRole] = None
-    ) -> Optional[User]:
-        """
-        Atualiza um usuário
-        
-        Args:
-            user_id: ID do usuário
-            name: Novo nome (opcional)
-            email: Novo email (opcional)
-            password: Nova senha (opcional)
-            role: Nova role (opcional)
-            
-        Returns:
-            Usuário atualizado ou None se não encontrado
-        """
+    def update_user(self, user_id: int, name: Optional[str] = None, email: Optional[str] = None, password: Optional[str] = None, role: Optional[UserRole] = None) -> Optional[User]:
         user = self.repository.get_by_id(user_id)
         if not user:
             return None
@@ -113,7 +88,6 @@ class UserService:
             user.name = name
         
         if email is not None:
-            # Verificar se o email já está em uso por outro usuário
             existing_user = self.repository.get_by_email(email)
             if existing_user and existing_user.id != user_id:
                 raise ValueError(f"Email {email} já está em uso")
@@ -128,21 +102,13 @@ class UserService:
         return self.repository.update(user)
     
     def delete_user(self, user_id: int) -> bool:
-        """Deleta um usuário"""
         return self.repository.delete(user_id)
     
-    # Recuperação de senha
+    # ==========================================================
+    # RECUPERAÇÃO DE SENHA (AQUI ESTÁ A MUDANÇA)
+    # ==========================================================
     
     def generate_reset_token(self, email: str) -> Optional[Tuple[str, datetime]]:
-        """
-        Gera um token de reset de senha único
-        
-        Args:
-            email: Email do usuário
-            
-        Returns:
-            Tupla (token, expira_em) ou None se usuário não existe
-        """
         if not self.db:
             raise RuntimeError("Database session not available")
         
@@ -150,15 +116,11 @@ class UserService:
         if not user:
             return None
         
-        # Gerar token aleatório de 32 caracteres (256 bits)
         token = secrets.token_urlsafe(32)
-        
-        # Expiração: 15 minutos (configurável)
         expires_at = datetime.utcnow() + timedelta(
             minutes=getattr(settings, 'RESET_TOKEN_EXPIRE_MINUTES', 15)
         )
         
-        # Criar registro de token no banco
         reset_token = PasswordResetToken(
             user_id=user.id,
             token=token,
@@ -171,15 +133,6 @@ class UserService:
         return token, expires_at
     
     def validate_reset_token(self, token: str) -> Optional[User]:
-        """
-        Valida um token de reset e retorna o usuário se válido
-        
-        Args:
-            token: Token a validar
-            
-        Returns:
-            User se válido, None se inválido/expirado/usado
-        """
         if not self.db:
             raise RuntimeError("Database session not available")
         
@@ -187,41 +140,19 @@ class UserService:
             PasswordResetToken.token == token
         ).first()
         
-        if not reset_token:
+        if not reset_token or reset_token.used or datetime.utcnow() > reset_token.expires_at:
             return None
         
-        # Validações
-        if reset_token.used:
-            return None  # Token já foi usado
-        
-        if datetime.utcnow() > reset_token.expires_at:
-            return None  # Token expirado
-        
-        # Token válido, retornar o usuário
-        user = self.repository.get_by_id(reset_token.user_id)
-        if not user:
-            return None
-        return user
+        return self.repository.get_by_id(reset_token.user_id)
     
     def reset_password(self, token: str, new_password: str) -> Optional[User]:
-        """
-        Reseta a senha usando um token válido
-        
-        Args:
-            token: Token de reset
-            new_password: Nova senha
-            
-        Returns:
-            User se sucesso, None se token inválido
-        """
         if not self.db:
             raise RuntimeError("Database session not available")
         
-        # Validar token e obter usuário
-       
         reset_token = self.db.query(PasswordResetToken).filter(
             PasswordResetToken.token == token
-        ).with_for_update().first()  # opcional: trava o registro
+        ).with_for_update().first()
+        
         if not reset_token or reset_token.used or datetime.utcnow() > reset_token.expires_at:
             return None
 
@@ -229,19 +160,13 @@ class UserService:
         if not user:
             return None
 
-        # 2. Operação atômica
         try:
-            # Atualizar senha
             user.password_hash = self.hash_password(new_password)
             self.db.add(user)
-
-            # Marcar token como usado
             reset_token.used = True
             reset_token.used_at = datetime.utcnow()
             self.db.add(reset_token)
-
             self.db.commit()
-
         except Exception:
             self.db.rollback()
             raise
@@ -250,50 +175,21 @@ class UserService:
     
     async def send_reset_email(self, email: str, token: str, reset_url_base: str) -> bool:
         """
-        Envia email de reset de senha
-        Tenta usar serviço de notificações se disponível, caso contrário envia direto (fake)
-        
-        Args:
-            email: Email do usuário
-            token: Token de reset
-            reset_url_base: URL base para construir link de reset (ex: https://app.com/reset)
-            
-        Returns:
-            True se sucesso, False se falha
+        Publica o evento no RabbitMQ de forma não bloqueante.
         """
-        reset_link = f"{reset_url_base}?token={token}"
-        
-        # Tentar usar serviço de notificações (futuro)
-        notification_service_url = getattr(
-            settings, 'NOTIFICATION_SERVICE_URL', None
-        )
-        
-        if notification_service_url:
-            try:
-                async with httpx.AsyncClient() as client:
-                    await client.post(
-                        f"{notification_service_url}/send-email",
-                        json={
-                            "to": email,
-                            "subject": "Recuperação de Senha - Soccer Quiz",
-                            "template": "password_reset",
-                            "variables": {
-                                "reset_link": reset_link
-                            }
-                        },
-                        timeout=5.0
-                    )
-                return True
-            except Exception as e:
-                print(f" Erro ao usar notification-service: {e}")
-                # Continuar com fallback
-        
-        # Fallback: enviar diretamente (placeholder)
-        try:
-            print(f"[FAKE EMAIL SENT] Reset token para {email}: {reset_link}")
-            # TODO: Implementar SMTP real quando necessário
-            return True
-        except Exception as e:
-            print(f" Erro ao enviar email: {e}")
-            return False
+        # Executa a função _publish_message (que é síncrona) em uma thread separada
+        # Isso impede que o 'pika' trave o servidor FastAPI enquanto conecta
+        await asyncio.to_thread(self._publish_message, email, token)
+        return True
 
+    def _publish_message(self, email: str, token: str):
+        """Método auxiliar síncrono para instanciar e usar o Producer"""
+        try:
+            # 1. Instancia o produtor (Isso lê as configs)
+            producer = RabbitMQProducer()
+            
+            # 2. Chama o método de publicar
+            producer.publish_password_reset(email, token)
+            
+        except Exception as e:
+            logger.error(f"❌ Erro crítico ao tentar publicar mensagem: {e}")

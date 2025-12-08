@@ -21,8 +21,11 @@ class Settings(BaseSettings):
     # Password Reset Token Configuration
     RESET_TOKEN_EXPIRE_MINUTES: int = 15  # Token expira em 15 minutos
     
-    # Notification Service URL (opcional)
-    NOTIFICATION_SERVICE_URL: str = ""  # Ex: http://notification-service:3000
+    # RabbitMQ Configuration
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
+    RABBITMQ_QUEUE: str = "password_reset_emails"
+    RABBITMQ_EXCHANGE: str = "notifications"
+    RABBITMQ_ROUTING_KEY: str = "email.password_reset"
     
     class Config:
         env_file = ".env"

@@ -257,7 +257,7 @@ async def forgot_password(
     db: Session = Depends(get_db)
 ):
     """
-    Endpoint públiCo - Inicia recuperação de senha
+    Endpoint público - Inicia recuperação de senha
     Gera token único de reset e envia email
     
     Não expõe se o email existe ou não (por segurança)
@@ -288,7 +288,7 @@ async def reset_password(
     db: Session = Depends(get_db)
 ):
     """
-    Endpoint públiCo - Redefine a senha usando token
+    Endpoint público - Redefine a senha usando token
     Token é único, de uso único, curto e expira em 15 minutos
     """
     from app.repositories.user_repository import UserRepository
@@ -322,7 +322,7 @@ async def validate_token(
     db: Session = Depends(get_db)
 ):
     """
-    Endpoint públiCo - Valida um token de reset
+    Endpoint público - Valida um token de reset
     Útil para verificar no front-end se o token é válido antes de exibir form
     """
     from app.repositories.user_repository import UserRepository

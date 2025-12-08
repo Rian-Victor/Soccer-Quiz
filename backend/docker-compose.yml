@@ -28,14 +28,25 @@ services:
       context: ./user-service
       dockerfile: Dockerfile
     container_name: soccer-quiz-user-service
+    command: uvicorn main:app --host 0.0.0.0 --port 3000 --reload
+
     environment:
+      PYTHONDONTWRITEBYTECODE: "1"
       PORT: 3000
       DEBUG: "true"
+      PYTHONUNBUFFERED: 1 # Para logs em tempo real
       # Configure DATABASE_URL para apontar para seu Azure SQL Database
       # Formato: mssql+pyodbc://username:password@server.database.windows.net:1433/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no
       DATABASE_URL: "mssql+pyodbc://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:1433/${DB_NAME}?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no&Connection Timeout=30"
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     ports:
       - "3001:3000"
+    volumes:
+      - ./user-service:/app
+
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - soccer-quiz-network
     restart: unless-stopped
@@ -46,9 +57,13 @@ services:
       context: ./auth-service
       dockerfile: Dockerfile
     container_name: soccer-quiz-auth-service
+    command: uvicorn main:app --host 0.0.0.0 --port 3000 --reload
+
     environment:
+      PYTHONDONTWRITEBYTECODE: "1"
       PORT: 3000
       DEBUG: "true"
+      PYTHONUNBUFFERED: 1
       JWT_SECRET: ${JWT_SECRET:-default-secret-change-in-production}
       JWT_ALGORITHM: HS256
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 30
@@ -59,6 +74,10 @@ services:
       USER_SERVICE_URL: http://user-service:3000
     ports:
       - "3002:3000"
+
+    volumes:
+      - ./auth-service:/app
+
     depends_on:
       user-service:
         condition: service_started
@@ -72,13 +91,21 @@ services:
       context: ./quiz-service
       dockerfile: Dockerfile
     container_name: soccer-quiz-quiz-service
+    command: uvicorn main:app --host 0.0.0.0 --port 3000 --reload
+    
     environment:
+      PYTHONDONTWRITEBYTECODE: "1"
       PORT: 3000
       DEBUG: "true"
+      PYTHONUNBUFFERED: 1
       MONGODB_URL: mongodb://mongodb:27017
       MONGODB_DB: soccer_quiz
     ports:
       - "3003:3000"
+    
+    volumes:
+      - ./quiz-service:/app
+
     depends_on:
       mongodb:
         condition: service_healthy
@@ -92,9 +119,13 @@ services:
       context: ./api-gateway
       dockerfile: Dockerfile
     container_name: soccer-quiz-api-gateway
+    command: uvicorn main:app --host 0.0.0.0 --port 3000 --reload
+    
     environment:
+      PYTHONDONTWRITEBYTECODE: "1"
       PORT: 3000
       DEBUG: "true"
+      PYTHONUNBUFFERED: 1
       JWT_SECRET: ${JWT_SECRET:-default-secret-change-in-production}
       JWT_ALGORITHM: HS256
       AUTH_SERVICE_URL: http://auth-service:3000
@@ -104,6 +135,10 @@ services:
       CASBIN_POLICY_PATH: app/casbin/policy.csv
     ports:
       - "3000:3000"
+
+    volumes:
+      - ./api-gateway:/app
+
     depends_on:
       auth-service:
         condition: service_started
@@ -111,6 +146,54 @@ services:
         condition: service_started
       quiz-service:
         condition: service_started
+    networks:
+      - soccer-quiz-network
+    restart: unless-stopped
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: soccer-quiz-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP port (produtores/consumidores)
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - soccer-quiz-network
+    restart: unless-stopped
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: soccer-quiz-notification-service
+    command: uvicorn main:app --host 0.0.0.0 --port 3000 --reload
+
+    env_file:
+      - .env
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PORT: 3000
+      DEBUG: "true"
+      PYTHONUNBUFFERED: 1
+     
+    ports:
+      - "3004:3000"
+
+    volumes:
+      - ./notification-service:/app
+
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - soccer-quiz-network
     restart: unless-stopped
