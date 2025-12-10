@@ -21,27 +21,23 @@ class Settings(BaseSettings):
     
     # RabbitMQ Configuration
     RABBITMQ_URL: str = "amqp://guest:guest@rabbitmq:5672/"
-    RABBITMQ_QUEUE: str = "password_reset_emails"
     RABBITMQ_EXCHANGE: str = "notifications"
-    RABBITMQ_ROUTING_KEY: str = "email.password_reset"
+    
     
     # SMTP Configuration (Email)
     SMTP_HOST: str = "smtp.gmail.com"  # ou seu servidor SMTP
     SMTP_PORT: int = 587
     SMTP_USER: str   # Ex: seu-email@gmail.com
     SMTP_PASSWORD: str   # Ex: sua-app-password
-    SMTP_FROM_EMAIL: str = "noreply@soccer-quiz.com"
-    SMTP_FROM_NAME: str = "Soccer Quiz"
+    SMTP_FROM_EMAIL: str = "noreply@futquiz.com"
+    SMTP_FROM_NAME: str = "FutQuiz"
     
     # Email Templates
-    PASSWORD_RESET_SUBJECT: str = "Recuperação de Senha - Soccer Quiz"
+    PASSWORD_RESET_SUBJECT: str = "Recuperação de Senha - FutQuiz"
 
-    # URL onde o seu React/Vue/Angular está rodando
-    FRONTEND_URL: str = "http://localhost:3000"
-
-    # Rota específica do frontend para resetar a senha
-    # O usuário vai cair em: http://localhost:3000/redefinir-senha?token=XYZ
-    RESET_PASSWORD_PATH: str = "/redefinir-senha"
+    # Frontend Integration (Valores padrão para desenvolvimento)
+    FRONTEND_BASE_URL: str = "http://localhost:3000"
+    FRONTEND_RESET_PATH: str = "/reset-password"
     
     class Config:
         env_file = ".env"

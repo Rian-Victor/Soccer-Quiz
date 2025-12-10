@@ -1,12 +1,11 @@
 """
-Produtor RabbitMQ Assíncrono (USER SERVICE)
-Publica eventos de registro de usuário (Boas-vindas)
+Produtor RabbitMQ Assíncrono
+Publica eventos de notificação para a fila
 """
 import aio_pika
 import json
 import logging
-from typing import Optional
-from datetime import datetime
+from typing import Dict, Any, Optional
 
 from app.config import settings
 
@@ -14,25 +13,22 @@ logger = logging.getLogger(__name__)
 
 
 class RabbitMQProducer:
-    """
-    Produtor assíncrono para o User Service.
-    Responsabilidade: Notificar quando um usuário é criado.
-    """
+    """Produtor assíncrono de mensagens para RabbitMQ"""
     
     _connection: Optional[aio_pika.RobustConnection] = None
     _channel: Optional[aio_pika.Channel] = None
     
     @classmethod
     async def _get_connection(cls):
-        """Obtém ou cria uma conexão (Singleton)"""
+        """Obtém ou cria uma conexão"""
         if cls._connection is None or cls._connection.is_closed:
             try:
                 cls._connection = await aio_pika.connect_robust(
                     settings.RABBITMQ_URL
                 )
-                logger.info("✅ User Service: Conectado ao RabbitMQ")
+                logger.info("✅ Conectado ao RabbitMQ")
             except Exception as e:
-                logger.error(f"❌ User Service: Erro ao conectar RabbitMQ: {e}")
+                logger.error(f"❌ Erro ao conectar ao RabbitMQ: {e}")
                 raise
         return cls._connection
     
@@ -43,30 +39,21 @@ class RabbitMQProducer:
             connection = await cls._get_connection()
             cls._channel = await connection.channel()
             
-            # Declara a exchange 
+            # Declarar exchange 
             await cls._channel.declare_exchange(
-                name=cls.EXCHANGE_NAME,
+                name=settings.RABBITMQ_EXCHANGE,
                 type=aio_pika.ExchangeType.TOPIC, 
                 durable=True
             )
+        
         return cls._channel
     
     @classmethod
-    async def publish_user_registered(cls, email: str, name: str) -> bool:
+    async def publish_event(cls, routing_key: str, message: Dict[str, Any]) -> bool:
         """
-        Publica evento de NOVO USUÁRIO (Boas-vindas)
+        Método genérico para publicar qualquer evento.
         """
         try:
-            message = {
-                "event": "UserCreated", 
-                "data": {
-                    "user_id": user_id,
-                    "email": email,
-                    "name": name,
-                    "created_at": str(datetime.utcnow())
-                }
-            }
-            
             channel = await cls._get_channel()
             exchange = await channel.get_exchange(settings.RABBITMQ_EXCHANGE)
             
@@ -74,19 +61,32 @@ class RabbitMQProducer:
                 aio_pika.Message(
                     body=json.dumps(message).encode(),
                     delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
-                    content_type='application/json'
+                    content_type="application/json"
                 ),
-                routing_key=cls.ROUTING_KEY_USER_CREATED
+                routing_key=routing_key 
             )
-            
-            logger.info(f"📤 Evento de Registro enviado para {email}")
+            logger.info(f"📤 Evento enviado: {routing_key}")
             return True
-            
         except Exception as e:
-            logger.error(f"❌ Erro ao publicar user_registered: {e}")
+            logger.error(f"❌ Erro ao publicar {routing_key}: {e}")
             return False
+
+
+    @classmethod
+    async def publish_password_reset(cls, email: str, token: str, user_name: str = None):
+        """Helper para o Auth-Service"""
+        payload = {
+            "type": "password_reset",
+            "email": email,
+            "token": token,
+            "user_name": user_name
+        }
+        
+        return await cls.publish_event("auth.password_reset", payload)
 
     @classmethod
     async def close(cls):
+        """Fecha a conexão"""
         if cls._connection and not cls._connection.is_closed:
             await cls._connection.close()
+            logger.info("🔌 Conexão RabbitMQ fechada")

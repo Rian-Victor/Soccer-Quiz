@@ -54,7 +54,7 @@ class EmailService:
     ) -> None:
         """Envia email via SMTP"""
 
-        # 🔐 Validação
+        # Validação
         if not settings.SMTP_USER:
             raise ValueError("❌ SMTP_USER não está configurado no .env")
     
