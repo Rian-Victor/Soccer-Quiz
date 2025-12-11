@@ -100,6 +100,7 @@ services:
       PYTHONUNBUFFERED: 1
       MONGODB_URL: mongodb://mongodb:27017
       MONGODB_DB: soccer_quiz
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     ports:
       - "3003:3000"
     
@@ -107,6 +108,8 @@ services:
       - ./quiz-service:/app
 
     depends_on:
+      rabbitmq:
+        condition: service_healthy
       mongodb:
         condition: service_healthy
     networks:
@@ -197,6 +200,28 @@ services:
     networks:
       - soccer-quiz-network
     restart: unless-stopped
+
+  quiz-worker:
+    build:
+      context: ./quiz-service
+      dockerfile: Dockerfile
+    command: python -m app.messaging.worker
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: 1
+      MONGODB_URL: mongodb://mongodb:27017/soccer_quiz
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - ./quiz-service:/app
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - soccer-quiz-network
+    restart: unless-stopped
+
 
 volumes:
   mongodb-data:

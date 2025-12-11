@@ -13,9 +13,12 @@ class Settings(BaseSettings):
     
     # Modo debug
     DEBUG: bool = True
+
+    # RABBIT
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
     
     # MongoDB
-    MONGODB_URL: str = "mongodb://localhost:27017"
+    MONGODB_URL: str = "mongodb://localhost:27017/quiz_db"
     MONGODB_DB: str = "soccer_quiz"
     
     class Config:
