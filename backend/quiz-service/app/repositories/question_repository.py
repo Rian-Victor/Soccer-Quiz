@@ -49,7 +49,6 @@ class QuestionRepository(IQuestionRepository):
     async def update(self, question_id: str, question_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Atualiza uma pergunta"""
         try:
-            # Remover campos None
             update_data = {k: v for k, v in question_data.items() if v is not None}
             
             result = await self.collection.update_one(
@@ -82,7 +81,6 @@ class QuestionRepository(IQuestionRepository):
         
         cursor = self.collection.aggregate(pipeline)
         
-        # Converte o cursor em lista e aplica o _convert_id
         questions = []
         async for doc in cursor:
             questions.append(self._convert_id(doc))

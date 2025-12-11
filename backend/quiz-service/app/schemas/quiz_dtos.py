@@ -1,4 +1,4 @@
-# app/schemas/quiz_dtos.py
+
 from pydantic import BaseModel
 from typing import Optional
 

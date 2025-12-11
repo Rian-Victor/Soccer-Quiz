@@ -1,5 +1,3 @@
-# app/routers/quiz_routes.py
-
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from typing import Optional
 
@@ -13,13 +11,11 @@ from app.messaging.producer import producer
 
 router = APIRouter(prefix="/api/quiz", tags=["quiz"])
 
-# --- Dependências ---
 
 def get_quiz_service(db = Depends(get_database)) -> QuizGameService:
     session_repo = QuizSessionRepository(db)
     question_repo = QuestionRepository(db)
     answer_repo = AnswerRepository(db)
-    # Nota: Aqui futuramente você injetará o RabbitMQ Producer também
     return QuizGameService(session_repo, question_repo, answer_repo, producer)
 
 async def get_current_user_id(x_user_id: Optional[str] = Header(None, alias="X-User-Id")) -> int:
@@ -28,20 +24,17 @@ async def get_current_user_id(x_user_id: Optional[str] = Header(None, alias="X-U
     O Gateway valida o JWT e injeta este Header.
     """
     if not x_user_id:
-        # Fallback para testes locais sem Gateway (opcional)
-        # return 1 
         raise HTTPException(status_code=401, detail="X-User-Id header missing")
     try:
         return int(x_user_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid User ID format")
 
-# --- Rotas ---
 
 @router.post("/start", status_code=status.HTTP_201_CREATED)
 async def start_quiz(
     request: StartQuizRequest,
-    user_id: int = Depends(get_current_user_id), # Seguro via Header
+    user_id: int = Depends(get_current_user_id),
     service: QuizGameService = Depends(get_quiz_service)
 ):
     """
@@ -53,8 +46,7 @@ async def start_quiz(
             quiz_type=request.quiz_type,
             team_id=request.team_id
         )
-        
-        # Formatar resposta inicial
+     
         current_quiz = await service.get_current_quiz(user_id)
         
         return {
@@ -86,15 +78,13 @@ async def get_current_quiz(
 @router.post("/answer")
 async def submit_answer(
     request: SubmitAnswerRequest,
-    user_id: int = Depends(get_current_user_id), # Usado para logs ou validação extra
+    user_id: int = Depends(get_current_user_id),
     service: QuizGameService = Depends(get_quiz_service)
 ):
     """
     Submete resposta de uma pergunta
     """
     try:
-        # Dica de segurança: O Service poderia verificar se a session_id pertence ao user_id
-        # Mas por enquanto, assumimos que o ID da sessão é difícil de adivinhar (ObjectId)
         result = await service.submit_answer(
             session_id=request.session_id,
             question_id=request.question_id,
@@ -116,7 +106,6 @@ async def abandon_quiz(
     Usuário desiste do quiz (REQ 07)
     """
     try:
-        # Idealmente verificar se a sessão é deste usuário antes de abandonar
         session = await service.abandon_quiz(session_id)
         
         return {

@@ -1,17 +1,14 @@
-# quiz-service/app/services/quiz_game_service.py
-
 from typing import List, Optional
 from datetime import datetime
 import logging
 
-# Imports dos seus Repositories e Models
 from app.repositories.quiz_session_repository import QuizSessionRepository
 from app.repositories.question_repository import QuestionRepository
 from app.repositories.answer_repository import AnswerRepository
-# Importe os Enums e Schemas definidos anteriormente
+
 from app.schemas.quiz_session import QuizSession, QuizStatus, QuizType, QuestionAnswer
 from app.utils.scoring import calculate_points
-# (Opcional) Interface para disparar eventos
+
 from app.messaging.producer import EventProducer
 
 logger = logging.getLogger(__name__)
@@ -35,15 +32,12 @@ class QuizGameService:
         quiz_type: str = "general", 
         team_id: Optional[str] = None
     ) -> QuizSession:
-        # 1. Validação de Sessão Ativa
         active_session = await self.session_repo.get_active_by_user(user_id)
         if active_session:
             raise ValueError("Usuário já possui um quiz ativo")
         
         logger.info(f"🔍 DEBUG: Tentando buscar perguntas...")
-        
-        # 2. Performance: Repository deve usar Aggregation $sample
-        # (Você precisará criar esse método no question_repo)
+      
         questions = await self.question_repo.get_random_questions(limit=1) #ajustar dps
         
         logger.info(f"🔍 DEBUG: Quantidade encontrada: {len(questions)}")
@@ -54,8 +48,6 @@ class QuizGameService:
             raise ValueError("Não há perguntas suficientes para iniciar o quiz")
         
         
-        
-        # 3. Criação usando Enums e Strings para IDs
         session = QuizSession(
             user_id=user_id,
             quiz_type=QuizType(quiz_type), 
@@ -94,18 +86,16 @@ class QuizGameService:
         correct_answer = next((a for a in answers if a.get("correct") is True), None)
         
         if not correct_answer:
-            # Fallback de segurança: se a pergunta estiver quebrada no banco
             logger.error(f"Pergunta {question_id} sem resposta correta!")
             raise ValueError("Erro interno: Pergunta sem gabarito")
 
-        # Validação
+
         is_correct = (answer_id == str(correct_answer["id"]))
         
-        # Cálculo de Pontos (Usando seu utils)
-        # Nota: Ideal passar difficulty aqui se tiver no objeto question
+        # Cálculo de Pontos 
+
         points = calculate_points(is_correct, time_taken_seconds)
-        
-        # Atualiza Sessão
+   
         question_answer = QuestionAnswer(
             question_id=question_id,
             selected_answer_id=answer_id,
@@ -151,23 +141,12 @@ class QuizGameService:
         await self.session_repo.update(session)
         logger.info(f"🏁 Quiz Finalizado: User={session.user_id}, Pontos={session.total_points}")
 
-
-
-        # TODO: Implementar envio para RabbitMQ
-        # payload = {
-        #     "user_id": session.user_id,
-        #     "score": session.total_points,
-        #     "time": session.total_time_seconds,
-        #     "timestamp": session.finished_at.isoformat()
-        # }
-        # await self.event_producer.publish("game_finished", payload)
         await self.session_repo.update(session)
     
-    # --- NOVO: Enviar evento para RabbitMQ ---
         payload = {
             "session_id": str(session.id),
             "user_id": session.user_id,
-            "user_name": "TODO: Buscar Nome", # O ideal é ter o nome no token JWT ou cache
+            "user_name": "TODO: Buscar Nome", 
             "total_points": session.total_points,
             "total_time_seconds": session.total_time_seconds,
             "finished_at": session.finished_at.isoformat(),
@@ -175,7 +154,6 @@ class QuizGameService:
             "total_questions": len(session.questions)
         }
         
-        # Fire and forget (não trava o retorno da API)
         await self.event_producer.publish_game_finished(payload)
 
 
@@ -187,8 +165,7 @@ class QuizGameService:
         current_q_id = session.questions[session.current_question_index]
         question = await self.question_repo.get_by_id(current_q_id)
         answers = await self.answer_repo.get_by_question(current_q_id)
-        
-        # Sanitização: Remove o campo 'correct'
+
         answers_data = [
             {"id": str(a["id"]), "text": a["text"]} for a in answers
         ]
@@ -208,25 +185,20 @@ class QuizGameService:
         """
         Marca o quiz como abandonado.
         """
-        # 1. Buscar Sessão
         session = await self.session_repo.get_by_id(session_id)
         if not session:
             raise ValueError("Sessão não encontrada")
-        
-        # 2. Validar Status (Só pode abandonar se estiver jogando)
+      
         if session.status != QuizStatus.IN_PROGRESS:
             raise ValueError("Este quiz já foi finalizado ou abandonado")
         
-        # 3. Atualizar Estado
         session.status = QuizStatus.ABANDONED
         session.finished_at = datetime.utcnow()
-        
-        # Opcional: Calcular tempo até o abandono
+ 
         session.total_time_seconds = int(
             (session.finished_at - session.started_at).total_seconds()
         )
-        
-        # 4. Salvar no Banco
+   
         await self.session_repo.update(session)
         logger.info(f"⚠️ Quiz abandonado: session_id={session_id}")
         

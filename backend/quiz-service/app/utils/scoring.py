@@ -1,5 +1,3 @@
-# quiz-service/app/utils/scoring.py
-
 from enum import Enum
 
 class DifficultyMultiplier(float, Enum):
@@ -44,7 +42,7 @@ def calculate_points(
     try:
         multiplier = DifficultyMultiplier[difficulty.upper()].value
     except KeyError:
-        multiplier = 1.0 # Fallback se vier uma dificuldade desconhecida
+        multiplier = 1.0 
 
     final_score = int(raw_score * multiplier)
     

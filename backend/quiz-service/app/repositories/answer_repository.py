@@ -22,12 +22,12 @@ class AnswerRepository(IAnswerRepository):
         """Auxiliar para converter ObjectId em string"""
         if data and "_id" in data:
             data["id"] = str(data["_id"])
-            # del data["_id"] # Opcional, depende se você quer limpar
+            
         return data
     
     async def get_by_question(self, question_id: str) -> List[Dict[str, Any]]:
         """Busca todas as respostas de uma pergunta específica"""
-        # Procura onde o campo 'questionId' é igual ao id passado
+        
         cursor = self.collection.find({"questionId": question_id})
         
         answers = []
@@ -65,7 +65,6 @@ class AnswerRepository(IAnswerRepository):
     async def update(self, answer_id: str, answer_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Atualiza uma resposta"""
         try:
-            # Remover campos None
             update_data = {k: v for k, v in answer_data.items() if v is not None}
             
             result = await self.collection.update_one(

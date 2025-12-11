@@ -18,7 +18,7 @@ router = APIRouter()
 class QuestionCreate(BaseModel):
     """Schema para criação de pergunta"""
     statement: str  # Enunciado
-    topic: str  # Tópico
+    topic: str  
     difficulty: str  # Dificuldade (ex: "easy", "medium", "hard")
 
 
@@ -39,8 +39,6 @@ class QuestionResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
-# Dependência para obter repositório
 def get_question_repository(db = Depends(get_database)) -> IQuestionRepository:
     """Dependência para obter repositório de perguntas"""
     return QuestionRepository(db)

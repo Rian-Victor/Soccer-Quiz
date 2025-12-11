@@ -1,28 +1,24 @@
-# quiz-service/app/repositories/quiz_session_repository.py
+
 
 from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 from bson.errors import InvalidId
 
-# Importe os Enums para evitar strings mágicas
 from app.schemas.quiz_session import QuizSession, QuizStatus 
 
 class QuizSessionRepository:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.collection = db["quiz_sessions"]
-        # Dica: Criar índices aqui ou no startup da aplicação é essencial para performance
-        # await self.collection.create_index([("user_id", 1), ("status", 1)])
+
+        # TODO índices para performance
     
     async def create(self, session: QuizSession) -> QuizSession:
         """Cria uma nova sessão de quiz"""
-        # Pydantic V2: usa model_dump ao invés de dict
         session_dict = session.model_dump(by_alias=True, exclude={"id"})
         
         result = await self.collection.insert_one(session_dict)
-        
-        # Atualiza o ID no objeto Python
-        # Convertendo para string para manter compatibilidade com o modelo Pydantic
+
         session.id = str(result.inserted_id)
         return session
     
@@ -31,7 +27,7 @@ class QuizSessionRepository:
         try:
             oid = ObjectId(session_id)
         except InvalidId:
-            return None # Retorna None se o ID não for um formato válido do Mongo
+            return None
 
         doc = await self.collection.find_one({"_id": oid})
         return QuizSession(**doc) if doc else None
@@ -40,13 +36,12 @@ class QuizSessionRepository:
         """Busca sessão ativa do usuário"""
         doc = await self.collection.find_one({
             "user_id": user_id,
-            "status": QuizStatus.IN_PROGRESS.value # Usa o valor do Enum ("in_progress")
+            "status": QuizStatus.IN_PROGRESS.value 
         })
         return QuizSession(**doc) if doc else None
     
     async def update(self, session: QuizSession) -> QuizSession:
         """Atualiza sessão"""
-        # Importante: Converter o ID string de volta para ObjectId para a query
         try:
             oid = ObjectId(session.id)
         except InvalidId:

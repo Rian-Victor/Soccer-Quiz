@@ -1,9 +1,7 @@
-# quiz-service/app/events/producer.py
-
 import json
 import logging
 import aio_pika
-from app.config import settings # Assumindo que você tem RABBITMQ_URL aqui
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +42,7 @@ class EventProducer:
             delivery_mode=aio_pika.DeliveryMode.PERSISTENT
         )
         
-        # Routing Key: define quem vai receber (tópico)
+       
         await self.exchange.publish(message, routing_key="game.finished")
         logger.debug(f"📤 Evento game.finished enviado: {payload.get('session_id')}")
 

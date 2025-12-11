@@ -1,4 +1,3 @@
-# quiz-service/app/services/leaderboard_service.py
 
 from typing import List, Optional
 from datetime import datetime
@@ -6,7 +5,7 @@ import logging
 
 from app.repositories.leaderboard_repository import LeaderboardRepository
 from app.repositories.quiz_session_repository import QuizSessionRepository
-# Importando os Schemas/Enums corretos
+
 from app.schemas.leaderboard import LeaderboardEntry
 from app.schemas.quiz_session import QuizSession, QuizStatus
 
@@ -27,7 +26,6 @@ class LeaderboardService:
         user_name: str
     ):
         """Atualiza ranking após conclusão de quiz"""
-        # 1. Uso de Enum ao invés de string mágica
         if session.status != QuizStatus.COMPLETED:
             logger.warning(f"Tentativa de atualizar ranking com quiz não finalizado: {session.id}")
             return
@@ -42,19 +40,16 @@ class LeaderboardService:
         entry.total_quizzes_completed += 1
         entry.total_points += session.total_points
         
-        # Evita divisão por zero (embora improvável aqui)
         if entry.total_quizzes_completed > 0:
             entry.average_points = entry.total_points / entry.total_quizzes_completed
         
         # --- Lógica de Melhor Pontuação (Com Desempate por Tempo) ---
         is_new_record = False
-        
-        # Caso 1: Pontuação maior que a anterior
+       
         if session.total_points > entry.best_quiz_points:
             is_new_record = True
-        # Caso 2: Pontuação igual, mas tempo menor (mais rápido)
+  
         elif session.total_points == entry.best_quiz_points:
-            # Se não tinha tempo registrado antes OU o novo tempo é menor
             if entry.best_quiz_time_seconds is None or session.total_time_seconds < entry.best_quiz_time_seconds:
                 is_new_record = True
         
@@ -63,7 +58,6 @@ class LeaderboardService:
             entry.best_quiz_time_seconds = session.total_time_seconds
 
         # --- Lógica de Jogador Mais Rápido (Apenas Perfect Scores) ---
-        # Só conta para o ranking de velocidade se acertou TUDO
         total_questions = len(session.questions)
         if session.correct_answers == total_questions and total_questions > 0:
             current_fastest = entry.fastest_completion_time

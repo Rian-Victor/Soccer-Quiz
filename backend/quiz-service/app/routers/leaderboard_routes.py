@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from typing import List
 
-# Importe suas dependências de banco e serviço
 from app.database import get_database
 from app.repositories.leaderboard_repository import LeaderboardRepository
 from app.repositories.quiz_session_repository import QuizSessionRepository
