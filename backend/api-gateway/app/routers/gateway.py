@@ -6,7 +6,13 @@ from fastapi import APIRouter, Request
 from app.services.proxy import ProxyService
 
 router = APIRouter()
+# ISP: o router define proxies separados por domínio, mantendo cada interface segregada.
+# DIP: delegamos o comportamento de proxy a um serviço especializado em vez de misturar no router.
 proxy_service = ProxyService()
+
+# ==========================================
+# AUTH SERVICE
+# ==========================================
 
 
 @router.api_route("/auth/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
@@ -43,6 +49,9 @@ async def validate_token(request: Request):
     """
     return await proxy_service.proxy_request("user", "password/validate-token", request)
 
+# ==========================================
+# USER SERVICE
+# ==========================================
 
 @router.api_route("/users/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 async def proxy_users(path: str, request: Request):
@@ -55,6 +64,32 @@ async def proxy_user(path: str, request: Request):
     """Roteia requisições para user-service (alias)"""
     return await proxy_service.proxy_request("user", path, request)
 
+# ==========================================
+# QUIZ SERVICE - GAMEPLAY & RANKING 
+# ==========================================
+
+@router.api_route("/api/quiz/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+async def proxy_gameplay(path: str, request: Request):
+    """
+    Roteia o Gameplay (Start, Answer, Abandon)
+    Gateway: /api/quiz/start -> QuizService: /api/quiz/start
+    """
+    # Reconstrói o caminho completo que o microsserviço espera
+    full_path = f"api/quiz/{path}"
+    return await proxy_service.proxy_request("quiz", full_path, request)
+
+@router.api_route("/api/leaderboard/{path:path}", methods=["GET", "OPTIONS"])
+async def proxy_leaderboard(path: str, request: Request):
+    """
+    Roteia o Ranking
+    Gateway: /api/leaderboard/general -> QuizService: /api/leaderboard/general
+    """
+    full_path = f"api/leaderboard/{path}"
+    return await proxy_service.proxy_request("quiz", full_path, request)
+
+# ==========================================
+# QUIZ SERVICE - ADMIN (CRUD)
+# ==========================================
 
 @router.api_route("/quiz/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 async def proxy_quiz(path: str, request: Request):

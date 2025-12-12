@@ -11,7 +11,7 @@ from app.config import settings
 from app.routers import auth
 from app.database import engine, Base
 
-
+# SRP: este módulo controla apenas o ciclo de vida do serviço, mantendo a lógica de domínio nos routers.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup - Criar tabelas

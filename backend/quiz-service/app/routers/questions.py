@@ -5,6 +5,7 @@ CRUD de perguntas
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
+from app.database import get_database
 
 from app.repositories.question_repository import QuestionRepository
 from app.interfaces.repositories import IQuestionRepository
@@ -17,7 +18,7 @@ router = APIRouter()
 class QuestionCreate(BaseModel):
     """Schema para criação de pergunta"""
     statement: str  # Enunciado
-    topic: str  # Tópico
+    topic: str  
     difficulty: str  # Dificuldade (ex: "easy", "medium", "hard")
 
 
@@ -38,11 +39,9 @@ class QuestionResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
-# Dependência para obter repositório
-def get_question_repository() -> IQuestionRepository:
+def get_question_repository(db = Depends(get_database)) -> IQuestionRepository:
     """Dependência para obter repositório de perguntas"""
-    return QuestionRepository()
+    return QuestionRepository(db)
 
 
 @router.post("", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)

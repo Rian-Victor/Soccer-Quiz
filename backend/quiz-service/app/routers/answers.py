@@ -5,6 +5,7 @@ CRUD de respostas
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
+from app.database import get_database
 
 from app.repositories.answer_repository import AnswerRepository
 from app.interfaces.repositories import IAnswerRepository
@@ -16,9 +17,9 @@ router = APIRouter()
 # Schemas Pydantic
 class AnswerCreate(BaseModel):
     """Schema para criação de resposta"""
-    text: str  # Texto da resposta
-    correct: bool  # Flag indicando se a resposta está correta
-    questionId: str  # ID da pergunta relacionada
+    text: str  
+    correct: bool 
+    questionId: str  
 
 
 class AnswerUpdate(BaseModel):
@@ -39,10 +40,9 @@ class AnswerResponse(BaseModel):
         from_attributes = True
 
 
-# Dependência para obter repositório
-def get_answer_repository() -> IAnswerRepository:
+def get_answer_repository(db = Depends(get_database)) -> IAnswerRepository:
     """Dependência para obter repositório de respostas"""
-    return AnswerRepository()
+    return AnswerRepository(db)
 
 
 @router.post("", response_model=AnswerResponse, status_code=status.HTTP_201_CREATED)

@@ -33,6 +33,8 @@ export interface RefreshTokenResponse {
   expires_at: string;
 }
 
+// SRP: authService encapsula apenas chamadas relacionadas à autenticação.
+// OCP: novos endpoints de auth podem ser adicionados aqui sem alterar o contrato utilizado pelos consumidores.
 export const authService = {
   async login(loginData: LoginRequest): Promise<LoginResponse> {
     console.log("Fazendo login...");
@@ -72,7 +74,9 @@ export const authService = {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Erro:", errorText);
-      throw new Error(`Erro ao fazer logout: ${response.status} - ${errorText}`);
+      throw new Error(
+        `Erro ao fazer logout: ${response.status} - ${errorText}`
+      );
     }
 
     return await response.json();
@@ -104,4 +108,3 @@ export const authService = {
     return await response.json();
   },
 };
-

@@ -16,8 +16,8 @@ from app.database import engine, Base
 async def lifespan(app: FastAPI):
     # Startup - Criar tabelas
     Base.metadata.create_all(bind=engine)
-    print(f"User Service iniciado na porta {settings.PORT}")
-    print(f" Documentação disponível em: http://localhost:{settings.PORT}/docs")
+    print(f" ✅ User Service iniciado na porta {settings.PORT}")
+    print(f" ✅ Documentação disponível em: http://localhost:{settings.PORT}/docs")
     yield
     # Shutdown
     print("User Service encerrado")

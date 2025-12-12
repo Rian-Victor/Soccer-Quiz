@@ -13,6 +13,7 @@ class UserData(BaseModel):
     email: str
     password_hash: str
     role: str  # "admin" ou "comum"
+    name: str = "Usuário"
 
 
 class IUserService(ABC):
