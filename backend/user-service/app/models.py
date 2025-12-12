@@ -1,6 +1,6 @@
 """
 Modelos do User Service
-Versão Limpa: Sem referências a tokens de reset
+
 """
 import enum
 from sqlalchemy import Column, Integer, String
