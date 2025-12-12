@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI):
     print("✅ Quiz Service encerrado com sucesso")
 
 
+
 app = FastAPI(
     title="Soccer Quiz - Quiz Service",
     description="Serviço responsável pelo conteúdo e lógica do jogo.",
@@ -69,6 +70,7 @@ async def root():
         "version": "1.0.0",
         "features": ["crud", "gameplay", "rabbitmq-producer"]
     }
+
 
 @app.get("/health", tags=["health"])
 async def health():
