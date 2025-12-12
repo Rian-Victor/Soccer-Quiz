@@ -1,18 +1,18 @@
-
+"""
+Repository para Leaderboard (Ranking)
+"""
 from typing import List, Optional
 from datetime import datetime 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 from bson.errors import InvalidId
 
-
 from app.schemas.leaderboard import LeaderboardEntry 
+
 
 class LeaderboardRepository:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.collection = db["leaderboard"]
-
-        # TODO índices no ranking
     
     async def get_or_create(self, user_id: int, user_name: str) -> LeaderboardEntry:
         """Busca ou cria entrada do usuário no ranking"""
@@ -20,8 +20,7 @@ class LeaderboardRepository:
         
         if doc:
             return LeaderboardEntry(**doc)
-        
-        # Criar nova entrada
+     
         entry = LeaderboardEntry(
             user_id=user_id,
             user_name=user_name,
@@ -31,7 +30,7 @@ class LeaderboardRepository:
         
         entry_dict = entry.model_dump(by_alias=True, exclude={"id"})
         result = await self.collection.insert_one(entry_dict)
-  
+        
         entry.id = str(result.inserted_id)
         return entry
     
@@ -65,3 +64,8 @@ class LeaderboardRepository:
         }).sort("fastest_completion_time", 1).limit(limit)
         
         return [LeaderboardEntry(**doc) async for doc in cursor]
+    
+    async def get_by_user_id(self, user_id: int) -> Optional[LeaderboardEntry]:
+        """Busca ranking de um usuário específico"""
+        doc = await self.collection.find_one({"user_id": user_id})
+        return LeaderboardEntry(**doc) if doc else None

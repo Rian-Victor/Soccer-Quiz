@@ -1,6 +1,7 @@
 """
 Quiz Service - Soccer Quiz
-Gerencia conteúdo do jogo (Times, Perguntas, Respostas), Gameplay e Ranking.
+Gerencia conteúdo do jogo (Times, Perguntas, Respostas) e lógica de gameplay.
+O ranking é mantido pelo Ranking Service através de eventos RabbitMQ.
 """
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -9,11 +10,10 @@ import uvicorn
 
 from app.config import settings
 from app.database import init_db, close_db
-from app.messaging.producer import producer 
+from app.messaging.producer import event_producer
 
 from app.routers import teams, questions, answers       
-from app.routers import quiz_routes, leaderboard_routes 
-
+from app.routers import quiz_routes 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,21 +21,21 @@ async def lifespan(app: FastAPI):
 
     await init_db()
 
-    await producer.connect()
+    await event_producer.connect()
     
     print(f"🚀 Quiz Service iniciado na porta {settings.PORT}")
     print(f"📚 Documentação disponível em: http://localhost:{settings.PORT}/docs")
     
     yield 
     print("🛑 Encerrando conexões...")
-    await producer.close()
+    await event_producer.close()
     await close_db()             
     print("✅ Quiz Service encerrado com sucesso")
 
 
 app = FastAPI(
     title="Soccer Quiz - Quiz Service",
-    description="Serviço responsável pelo conteúdo, lógica do jogo e ranking.",
+    description="Serviço responsável pelo conteúdo e lógica do jogo.",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -57,7 +57,6 @@ app.include_router(answers.router, prefix="/answers", tags=["answers"])
 
 # 2. Rotas de Gameplay (App Mobile)
 app.include_router(quiz_routes.router)
-app.include_router(leaderboard_routes.router)
 
 
 
@@ -68,7 +67,7 @@ async def root():
         "service": "quiz-service", 
         "status": "running", 
         "version": "1.0.0",
-        "features": ["crud", "gameplay", "leaderboard", "rabbitmq"]
+        "features": ["crud", "gameplay", "rabbitmq-producer"]
     }
 
 @app.get("/health", tags=["health"])

@@ -141,12 +141,18 @@ class QuizGameService:
         await self.session_repo.update(session)
         logger.info(f"🏁 Quiz Finalizado: User={session.user_id}, Pontos={session.total_points}")
 
-        await self.session_repo.update(session)
+        #await self.session_repo.update(session)
+
+        # --- PREPARAÇÃO DO PAYLOAD PARA O RABBITMQ ---
+        
+        # TODO: O ideal seria o front mandar o nome no token ou buscar no user-service.
+        # Por enquanto, mandamos um genérico para não quebrar o Ranking.
+        user_display_name = f"Jogador #{session.user_id}"
     
         payload = {
             "session_id": str(session.id),
-            "user_id": session.user_id,
-            "user_name": "TODO: Buscar Nome", 
+            "user_id": session.user_id, 
+            "user_name": user_display_name,
             "total_points": session.total_points,
             "total_time_seconds": session.total_time_seconds,
             "finished_at": session.finished_at.isoformat(),
@@ -154,7 +160,10 @@ class QuizGameService:
             "total_questions": len(session.questions)
         }
         
-        await self.event_producer.publish_game_finished(payload)
+        if self.event_producer:
+            await self.event_producer.publish_game_finished(payload)
+        else:
+            logger.error("❌ EventProducer não inicializado! Ranking não será atualizado.")
 
 
     async def get_current_quiz(self, user_id: int) -> Optional[dict]:

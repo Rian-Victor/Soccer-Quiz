@@ -1,14 +1,13 @@
 """
-Configuração do banco de dados MongoDB
+Configuração do banco de dados MongoDB para Ranking Service
 """
 from motor.motor_asyncio import AsyncIOMotorClient
 from typing import Optional
 
 from app.config import settings
 
-# Cliente MongoDB global
-client = AsyncIOMotorClient(settings.MONGODB_URL)
-database = client[settings.QUIZ_DB_NAME]
+client: Optional[AsyncIOMotorClient] = None
+database = None
 
 
 async def init_db():
@@ -30,4 +29,5 @@ async def close_db():
 def get_database():
     """Retorna instância do banco de dados"""
     return database
+
 

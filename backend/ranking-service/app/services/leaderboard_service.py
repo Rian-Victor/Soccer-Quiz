@@ -1,44 +1,39 @@
-
+"""
+Service para Leaderboard
+Atualiza rankings após receber eventos do Quiz Service
+"""
 from typing import List, Optional
 from datetime import datetime
 import logging
 
 from app.repositories.leaderboard_repository import LeaderboardRepository
-from app.repositories.quiz_session_repository import QuizSessionRepository
-
 from app.schemas.leaderboard import LeaderboardEntry
-from app.schemas.quiz_session import QuizSession, QuizStatus
 
 logger = logging.getLogger(__name__)
 
+
 class LeaderboardService:
-    def __init__(
-        self,
-        leaderboard_repo: LeaderboardRepository,
-        session_repo: QuizSessionRepository
-    ):
+    def __init__(self, leaderboard_repo: LeaderboardRepository):
         self.leaderboard_repo = leaderboard_repo
-        self.session_repo = session_repo
     
     async def update_after_quiz(
         self, 
-        session: QuizSession, 
-        user_name: str
+        user_id: int,
+        user_name: str,
+        total_points: int,
+        total_time_seconds: int,
+        correct_answers: int,
+        total_questions: int,
+        finished_at: datetime
     ):
         """Atualiza ranking após conclusão de quiz"""
-        if session.status != QuizStatus.COMPLETED:
-            logger.warning(f"Tentativa de atualizar ranking com quiz não finalizado: {session.id}")
-            return
         
         # Buscar ou criar entrada do usuário
-        entry = await self.leaderboard_repo.get_or_create(
-            user_id=session.user_id,
-            user_name=user_name
-        )
+        entry = await self.leaderboard_repo.get_or_create(user_id, user_name)
         
         # Atualizar estatísticas acumuladas
         entry.total_quizzes_completed += 1
-        entry.total_points += session.total_points
+        entry.total_points += total_points
         
         if entry.total_quizzes_completed > 0:
             entry.average_points = entry.total_points / entry.total_quizzes_completed
@@ -46,30 +41,29 @@ class LeaderboardService:
         # --- Lógica de Melhor Pontuação (Com Desempate por Tempo) ---
         is_new_record = False
        
-        if session.total_points > entry.best_quiz_points:
+        if total_points > entry.best_quiz_points:
             is_new_record = True
   
-        elif session.total_points == entry.best_quiz_points:
-            if entry.best_quiz_time_seconds is None or session.total_time_seconds < entry.best_quiz_time_seconds:
+        elif total_points == entry.best_quiz_points:
+            if entry.best_quiz_time_seconds is None or total_time_seconds < entry.best_quiz_time_seconds:
                 is_new_record = True
         
         if is_new_record:
-            entry.best_quiz_points = session.total_points
-            entry.best_quiz_time_seconds = session.total_time_seconds
+            entry.best_quiz_points = total_points
+            entry.best_quiz_time_seconds = total_time_seconds
 
         # --- Lógica de Jogador Mais Rápido (Apenas Perfect Scores) ---
-        total_questions = len(session.questions)
-        if session.correct_answers == total_questions and total_questions > 0:
+        if correct_answers == total_questions and total_questions > 0:
             current_fastest = entry.fastest_completion_time
             
-            if current_fastest is None or session.total_time_seconds < current_fastest:
-                entry.fastest_completion_time = session.total_time_seconds
+            if current_fastest is None or total_time_seconds < current_fastest:
+                entry.fastest_completion_time = total_time_seconds
 
-        entry.last_quiz_at = session.finished_at
+        entry.last_quiz_at = finished_at
         entry.updated_at = datetime.utcnow()
         
         await self.leaderboard_repo.update(entry)
-        logger.info(f"✅ Ranking atualizado: user_id={session.user_id}, pts={session.total_points}")
+        logger.info(f"✅ Ranking atualizado: user_id={user_id}, pts={total_points}")
     
     async def get_general_ranking(self, limit: int = 100) -> List[dict]:
         """Ranking geral por pontuação"""
@@ -102,6 +96,25 @@ class LeaderboardService:
             }
             for idx, entry in enumerate(entries)
         ]
+    
+    async def get_user_ranking(self, user_id: int) -> Optional[dict]:
+        """Retorna dados de ranking de um usuário específico"""
+        entry = await self.leaderboard_repo.get_by_user_id(user_id)
+        if not entry:
+            return None
+        
+        return {
+            "user_id": entry.user_id,
+            "user_name": entry.user_name,
+            "total_points": entry.total_points,
+            "total_quizzes": entry.total_quizzes_completed,
+            "average_points": round(entry.average_points, 2),
+            "best_quiz_points": entry.best_quiz_points,
+            "fastest_completion_time": entry.fastest_completion_time,
+            "fastest_time_formatted": self._format_time(entry.fastest_completion_time),
+            "last_quiz_at": entry.last_quiz_at.isoformat() if entry.last_quiz_at else None,
+            "updated_at": entry.updated_at.isoformat() if entry.updated_at else None
+        }
     
     def _format_time(self, seconds: Optional[int]) -> str:
         """Formata tempo em MM:SS"""

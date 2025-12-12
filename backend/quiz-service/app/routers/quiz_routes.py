@@ -7,7 +7,7 @@ from app.repositories.question_repository import QuestionRepository
 from app.repositories.answer_repository import AnswerRepository
 from app.services.quiz_game_service import QuizGameService
 from app.schemas.quiz_dtos import StartQuizRequest, SubmitAnswerRequest 
-from app.messaging.producer import producer
+from app.messaging.producer import event_producer
 
 router = APIRouter(prefix="/api/quiz", tags=["quiz"])
 
@@ -16,7 +16,7 @@ def get_quiz_service(db = Depends(get_database)) -> QuizGameService:
     session_repo = QuizSessionRepository(db)
     question_repo = QuestionRepository(db)
     answer_repo = AnswerRepository(db)
-    return QuizGameService(session_repo, question_repo, answer_repo, producer)
+    return QuizGameService(session_repo, question_repo, answer_repo, event_producer)
 
 async def get_current_user_id(x_user_id: Optional[str] = Header(None, alias="X-User-Id")) -> int:
     """

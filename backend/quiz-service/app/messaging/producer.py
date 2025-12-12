@@ -35,15 +35,19 @@ class EventProducer:
         """Publica evento de jogo finalizado"""
         if not self.exchange:
             logger.warning("RabbitMQ não conectado, evento perdido!")
-            return
+            await self.connect()
 
-        message = aio_pika.Message(
+        try:
+            message = aio_pika.Message(
             body=json.dumps(payload).encode(),
             delivery_mode=aio_pika.DeliveryMode.PERSISTENT
-        )
+            )
         
        
-        await self.exchange.publish(message, routing_key="game.finished")
-        logger.debug(f"📤 Evento game.finished enviado: {payload.get('session_id')}")
+            await self.exchange.publish(message, routing_key="game.finished")
+            logger.debug(f"📤 Evento game.finished enviado para User: {payload.get('session_id')}")
 
-producer = EventProducer()
+        except Exception as e:
+            logger.error(f"❌ Erro ao publicar evento: {e}")
+
+event_producer = EventProducer()
