@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://192.168.1.211:3003";
+const API_BASE_URL = "http://192.168.1.212:3003";
 
 export interface QuestionCreate {
     statement: string;
@@ -53,29 +53,33 @@ export interface TeamResponse {
 
 export const answerService = {
     async createAnswer(answerData: AnswerCreate): Promise<AnswerResponse> {
-        console.log("🔄 Criando resposta...");
-        
+        console.log("Criando resposta...");
+
         const response = await fetch(`${API_BASE_URL}/answers`, {
-            method: 'POST',
+            method: "POST",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
             body: JSON.stringify(answerData),
         });
 
-        console.log("📥 Status:", response.status);
+        console.log("Status:", response.status);
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("❌ Erro:", errorText);
-            throw new Error(`Erro ao criar resposta: ${response.status} - ${errorText}`);
+            console.error("Erro:", errorText);
+            throw new Error(
+                `Erro ao criar resposta: ${response.status} - ${errorText}`
+            );
         }
 
         return await response.json();
     },
 
     async getAnswersByQuestion(questionId: string): Promise<AnswerResponse[]> {
-        const response = await fetch(`${API_BASE_URL}/answers?question_id=${questionId}`);
+        const response = await fetch(
+            `${API_BASE_URL}/answers?question_id=${questionId}`
+        );
 
         if (!response.ok) {
             throw new Error(`Erro ao buscar respostas: ${response.statusText}`);
@@ -86,11 +90,13 @@ export const answerService = {
 };
 
 export const questionService = {
-    async createQuestion(questionData: QuestionCreate): Promise<QuestionResponse> {
+    async createQuestion(
+        questionData: QuestionCreate
+    ): Promise<QuestionResponse> {
         const response = await fetch(`${API_BASE_URL}/questions`, {
-            method: 'POST',
+            method: "POST",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
             body: JSON.stringify(questionData),
         });
@@ -98,14 +104,21 @@ export const questionService = {
         if (!response.ok) {
             const errorText = await response.text();
             console.error("Erro detalhado da API:", errorText);
-            throw new Error(`Erro ao criar pergunta: ${response.status} - ${errorText}`);
+            throw new Error(
+                `Erro ao criar pergunta: ${response.status} - ${errorText}`
+            );
         }
 
         return await response.json();
     },
 
-    async getQuestions(skip: number = 0, limit: number = 100): Promise<QuestionResponse[]> {
-        const response = await fetch(`${API_BASE_URL}/questions?skip=${skip}&limit=${limit}`);
+    async getQuestions(
+        skip: number = 0,
+        limit: number = 100
+    ): Promise<QuestionResponse[]> {
+        const response = await fetch(
+            `${API_BASE_URL}/questions?skip=${skip}&limit=${limit}`
+        );
 
         if (!response.ok) {
             throw new Error(`Erro ao buscar perguntas: ${response.statusText}`);
@@ -124,11 +137,14 @@ export const questionService = {
         return await response.json();
     },
 
-    async updateQuestion(questionId: string, questionData: Partial<QuestionCreate>): Promise<QuestionResponse> {
+    async updateQuestion(
+        questionId: string,
+        questionData: Partial<QuestionCreate>
+    ): Promise<QuestionResponse> {
         const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
-            method: 'PATCH',
+            method: "PATCH",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
             body: JSON.stringify(questionData),
         });
@@ -142,7 +158,7 @@ export const questionService = {
 
     async deleteQuestion(questionId: string): Promise<void> {
         const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
-            method: 'DELETE',
+            method: "DELETE",
         });
 
         if (!response.ok) {
@@ -154,9 +170,9 @@ export const questionService = {
 export const teamService = {
     async createTeam(teamData: TeamCreate): Promise<TeamResponse> {
         const response = await fetch(`${API_BASE_URL}/teams`, {
-            method: 'POST',
+            method: "POST",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
             body: JSON.stringify(teamData),
         });
@@ -169,8 +185,13 @@ export const teamService = {
         return await response.json();
     },
 
-    async getTeams(skip: number = 0, limit: number = 100): Promise<TeamResponse[]> {
-        const response = await fetch(`${API_BASE_URL}/teams?skip=${skip}&limit=${limit}`);
+    async getTeams(
+        skip: number = 0,
+        limit: number = 100
+    ): Promise<TeamResponse[]> {
+        const response = await fetch(
+            `${API_BASE_URL}/teams?skip=${skip}&limit=${limit}`
+        );
 
         if (!response.ok) {
             throw new Error(`Erro ao buscar times: ${response.statusText}`);

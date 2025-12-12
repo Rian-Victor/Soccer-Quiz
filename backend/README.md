@@ -13,7 +13,7 @@ O backend é composto por 4 microsserviços principais:
 
 ### Bancos de Dados
 
-- **PostgreSQL**: Usado por `auth-service` e `user-service` (bancos separados)
+- **PostgreSQL**: Usado por `user-service`
 - **MongoDB**: Usado por `quiz-service`
 
 ## Pré-requisitos
@@ -31,7 +31,7 @@ Copie o arquivo `.env.example` para `.env` e configure as variáveis:
 cp .env.example .env
 ```
 
-Edite o arquivo `.env` com suas configurações (especialmente `JWT_SECRET` para produção).
+Edite o arquivo `.env` com suas configurações
 
 ### 2. Iniciar os Serviços
 
@@ -51,7 +51,7 @@ docker-compose logs -f
 docker-compose down
 ```
 
-#### Usando Make (Recomendado)
+#### Usando Make
 
 ```bash
 # Ver comandos disponíveis
@@ -92,13 +92,13 @@ make dev-down
 | **quiz-service** | 3003          | 3000          | http://localhost:3003 |
 | **mongodb**      | 27017         | 27017         | localhost:27017       |
 
-### Produção (Azure App Service)
+### Produção 
 
 | Serviço         | URL de Produção                                                          |
 | --------------- | ------------------------------------------------------------------------ |
 | **api-gateway** | https://quiz-service-f5e0h5ctgna2c5a6.canadacentral-01.azurewebsites.net |
 
-📚 **Ver `PRODUCTION.md` para mais detalhes sobre configuração de produção.**
+
 
 ## Documentação
 
@@ -122,7 +122,7 @@ API Gateway (localhost:3000)
 
 ## Desenvolvimento
 
-### Rodar Serviços Individualmente (Local)
+### Rodar Serviços Individualmente 
 
 Cada serviço pode ser executado localmente para desenvolvimento:
 
@@ -134,8 +134,6 @@ source venv/bin/activate
 pip install -r requirements.txt
 python main.py
 ```
-
-**Importante**: Certifique-se de que os bancos de dados estejam rodando antes de iniciar os serviços.
 
 ### Estrutura de Pastas
 
@@ -151,49 +149,6 @@ backend/
 ```
 
 ## Comandos Úteis
-
-### Docker Compose
-
-```bash
-# Construir imagens
-docker-compose build
-
-# Iniciar serviços
-docker-compose up -d
-
-# Ver logs
-docker-compose logs -f [service-name]
-
-# Reiniciar serviço específico
-docker-compose restart [service-name]
-
-# Parar serviços
-docker-compose down
-
-# Parar e remover volumes
-docker-compose down -v
-
-# Ver status dos serviços
-docker-compose ps
-```
-
-### Make
-
-```bash
-make help          # Lista todos os comandos
-make build         # Constrói imagens
-make up            # Inicia serviços
-make down          # Para serviços
-make logs          # Mostra logs
-make logs-gateway  # Logs do API Gateway
-make logs-auth     # Logs do Auth Service
-make clean         # Remove tudo (containers, volumes, redes)
-make rebuild       # Reconstrói e reinicia tudo
-```
-
-## Troubleshooting
-
-### Serviços não iniciam
 
 1. Verifique se as portas não estão em uso:
 
