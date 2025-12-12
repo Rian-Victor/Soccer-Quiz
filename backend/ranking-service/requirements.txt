@@ -1,0 +1,12 @@
+fastapi==0.109.0
+uvicorn[standard]==0.22.0
+gunicorn==21.2.0
+motor==3.7.1
+pymongo==4.9.0
+pydantic==2.5.1
+pydantic-settings==2.2.0
+python-multipart==0.0.12
+aio-pika==9.2.2
+email-validator
+requests
+

@@ -21,7 +21,7 @@ router = APIRouter()
 def get_user_service(db: Session = Depends(get_db)) -> UserService:
     """Dependência para obter serviço de usuários"""
     repository = UserRepository(db)
-    return UserService(repository)
+    return UserService(repository, db)
 
 
 # Schemas Pydantic
@@ -67,6 +67,10 @@ class UserInternalResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class InternalPasswordUpdateRequest(BaseModel):
+    """Schema para atualização interna de senha (recebe o hash pronto)"""
+    password_hash: str
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -225,3 +229,24 @@ async def get_user_by_email_internal(
         role=user.role
     )
 
+
+@router.patch("/internal/{user_id}/password", status_code=status.HTTP_200_OK)
+async def update_user_password_internal(
+    user_id: int,
+    request: InternalPasswordUpdateRequest,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Endpoint interno - Atualiza apenas o hash da senha.
+    Chamado pelo auth-service após validação do token.
+    Recebe o hash JÁ PRONTO. Não deve hashear novamente.
+    """
+    success = user_service.update_password_hash(user_id, request.password_hash)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Usuário com ID {user_id} não encontrado ou erro ao atualizar"
+        )
+    
+    return {"message": "Senha atualizada com sucesso"}

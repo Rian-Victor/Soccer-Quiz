@@ -63,12 +63,12 @@ class ProxyService:
             "accept-encoding",
             "accept-language",
             "user-agent",
+            "x-user-id",
         ]
         
-        for key in header_keys_to_forward:
-            value = request.headers.get(key)
-            if value:
-                headers[key] = value
+        for key in request.headers:
+            if key.lower() in header_keys_to_forward:
+                headers[key] = request.headers[key]
         
         # Ler body da requisição
         body = await request.body()
@@ -82,19 +82,19 @@ class ProxyService:
                 content=body,
                 follow_redirects=True,
             )
-            
-            # Preparar headers da resposta (filtrar alguns headers)
+            # Preparar headers da resposta
             response_headers = {}
             headers_to_forward = [
                 "content-type",
                 "content-length",
                 "content-encoding",
+                "access-control-allow-origin",
+                "set-cookie",
             ]
             
-            for key in headers_to_forward:
-                value = response.headers.get(key)
-                if value:
-                    response_headers[key] = value
+            for key in response.headers:
+                if key.lower() in headers_to_forward:
+                    response_headers[key] = response.headers[key]
             
             # Retornar resposta
             return Response(

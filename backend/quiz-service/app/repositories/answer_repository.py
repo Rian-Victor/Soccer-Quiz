@@ -4,24 +4,37 @@ Implementação concreta do repositório de respostas usando MongoDB
 from typing import Optional, List, Dict, Any
 from bson import ObjectId
 from bson.errors import InvalidId
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.interfaces.repositories import IAnswerRepository
 from app.database import get_database
 
 
+
 class AnswerRepository(IAnswerRepository):
     """Implementação do repositório de respostas com MongoDB"""
     
-    def __init__(self):
-        self.db = get_database()
-        self.collection = self.db.answers
+    def __init__(self, db: AsyncIOMotorDatabase):
+        #self.db = get_database()
+        self.collection = db["answers"]
     
-    def _convert_id(self, answer_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Converte ObjectId para string"""
-        if answer_data and "_id" in answer_data:
-            answer_data["id"] = str(answer_data["_id"])
-            del answer_data["_id"]
-        return answer_data
+    def _convert_id(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Auxiliar para converter ObjectId em string"""
+        if data and "_id" in data:
+            data["id"] = str(data["_id"])
+            
+        return data
+    
+    async def get_by_question(self, question_id: str) -> List[Dict[str, Any]]:
+        """Busca todas as respostas de uma pergunta específica"""
+        
+        cursor = self.collection.find({"questionId": question_id})
+        
+        answers = []
+        async for doc in cursor:
+            answers.append(self._convert_id(doc))
+            
+        return answers
     
     async def create(self, answer_data: Dict[str, Any]) -> Dict[str, Any]:
         """Cria uma nova resposta"""
@@ -52,7 +65,6 @@ class AnswerRepository(IAnswerRepository):
     async def update(self, answer_id: str, answer_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Atualiza uma resposta"""
         try:
-            # Remover campos None
             update_data = {k: v for k, v in answer_data.items() if v is not None}
             
             result = await self.collection.update_one(
@@ -74,4 +86,5 @@ class AnswerRepository(IAnswerRepository):
             return result.deleted_count > 0
         except InvalidId:
             return False
+        
 
