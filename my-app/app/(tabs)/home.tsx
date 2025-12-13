@@ -23,7 +23,7 @@ export default function Home() {
 
         <ScrollView style={styles.scrollcontent}>
           <View style={styles.quizContent}>
-            <View style={styles.mainQuiz}>
+            <View>
               <View style={styles.imgMainQuiz}></View>
               <Text style={styles.titleMainQuiz}>
                 Quiz mania: quem é o jogador favorito de CR7

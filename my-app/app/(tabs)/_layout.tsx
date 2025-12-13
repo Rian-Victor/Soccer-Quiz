@@ -14,7 +14,7 @@ export default function TabsLayout() {
     { icon: ["home-outline", "home"], route: "home" },
     { icon: ["stats-chart-outline", "stats-chart"], route: "stats" },
     { icon: ["menu-outline", "menu"], route: "quizzes" },
-    { icon: ["newspaper-outline", "newspaper"], route: "noticias" },
+    { icon: ["newspaper-outline", "newspaper"], route: "dashboards" },
     { icon: ["person-outline", "person"], route: "perfil" },
   ] as const;
 
