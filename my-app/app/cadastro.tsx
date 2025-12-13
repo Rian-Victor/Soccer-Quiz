@@ -1,14 +1,29 @@
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { StyleSheet, View, Image, Text, TextInput, TouchableOpacity, ScrollView, Alert } from "react-native";
-import Icon from 'react-native-vector-icons/Feather';
+import { 
+    StyleSheet, 
+    View, 
+    Image, 
+    Text, 
+    TextInput, 
+    TouchableOpacity, 
+    ScrollView, 
+    Alert, 
+    ActivityIndicator 
+} from "react-native";
 import { Feather } from '@expo/vector-icons';
 
 export default function Cadastro() {
+    const router = useRouter();
+    
+    const [nome, setNome] = useState(''); 
+    const [email, setEmail] = useState(''); 
     const [senha, setSenha] = useState('');
-    const [erroSenha, setErroSenha] = useState(false);
     const [confirmSenha, setConfirmSenha] = useState('');
+    
+    const [loading, setLoading] = useState(false); 
     const [erroConfirm, setErroConfirm] = useState(false);
+    const [erroSenha, setErroSenha] = useState(false); 
 
     const [regraTamanho, setRegraTamanho] = useState(false);
     const [regraNumero, setRegraNumero] = useState(false);
@@ -16,18 +31,18 @@ export default function Cadastro() {
     const [mostrarSenha, setMostrarSenha] = useState(false);
     const [mostrarConfirm, setMostrarConfirm] = useState(false);
 
-    const validarSenha = (text) => {
+    const validarSenha = (text: string) => {
         setSenha(text);
-
         setRegraTamanho(text.length >= 6);
         setRegraNumero(/\d/.test(text));
-
-        setErroConfirm(confirmSenha !== text);
+        
+        if (confirmSenha.length > 0) {
+            setErroConfirm(confirmSenha !== text);
+        }
     };
 
-    const validarConfirmacao = (text) => {
+    const validarConfirmacao = (text: string) => {
         setConfirmSenha(text);
-
         setErroConfirm(text !== senha);
     };
 
@@ -38,15 +53,50 @@ export default function Cadastro() {
         senha.length > 0 &&
         confirmSenha.length > 0;
 
-
-    const handleCadastrar = () => {
-        if (!senhaValida) {
-            Alert.alert("Erro", "Verifique os requisitos da senha antes de continuar.");
+    const handleCadastrar = async () => {
+        if (!nome.trim() || !email.trim()) {
+            Alert.alert("Erro", "Preencha nome e e-mail.");
             return;
         }
 
-        navigation.navigate("/pattern")
-    }
+        if (!senhaValida) {
+            Alert.alert("Erro", "Verifique os requisitos da senha.");
+            return;
+        }
+
+        setLoading(true);
+
+        const API_URL = "http://192.168.1.211:3000/api/user";
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    name: nome,      
+                    email: email,    
+                    password: senha, 
+                }),
+            });
+
+            if (response.status === 201) {
+                Alert.alert("Sucesso", "Conta criada com sucesso!", [
+                    { text: "Fazer Login", onPress: () => router.replace("/login") }
+                ]);
+            } else {
+                const errorData = await response.json();
+                Alert.alert("Erro ao cadastrar", errorData.detail || "Verifique os dados e tente novamente.");
+            }
+
+        } catch (error) {
+            Alert.alert("Erro de Conexão", "Não foi possível conectar ao servidor. Verifique se o Docker está rodando.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <View style={styles.container}>
             <View style={styles.content}>
@@ -57,11 +107,14 @@ export default function Cadastro() {
 
                 <ScrollView style={styles.scrollcontent}>
                     <View style={styles.inputContent}>
+                        
                         <Text style={styles.inputTitle}>Nome Completo</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="Digite seu nome completo"
                             placeholderTextColor="#A9A9A9"
+                            value={nome}
+                            onChangeText={setNome}
                         />
 
                         <Text style={styles.inputTitle}>E-mail</Text>
@@ -69,10 +122,13 @@ export default function Cadastro() {
                             style={styles.input}
                             placeholder="Digite seu e-mail"
                             placeholderTextColor="#A9A9A9"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            value={email}
+                            onChangeText={setEmail}
                         />
 
                         <Text style={styles.inputTitle}>Senha</Text>
-
                         <View style={{ position: "relative" }}>
                             <TextInput
                                 style={[styles.input, { marginBottom: 10 }, erroSenha && { borderColor: '#FF3B3B', borderWidth: 1 }]}
@@ -82,86 +138,67 @@ export default function Cadastro() {
                                 onChangeText={validarSenha}
                                 value={senha}
                             />
-
                             <TouchableOpacity
                                 onPress={() => setMostrarSenha(!mostrarSenha)}
-                                style={{
-                                    position: "absolute",
-                                    right: 10,
-                                    top: 25
-                                }}
+                                style={{ position: "absolute", right: 10, top: 25 }}
                             >
-                                <Feather
-                                    name={mostrarSenha ? "eye-off" : "eye"}
-                                    size={20}
-                                    color="#555"
-                                />
+                                <Feather name={mostrarSenha ? "eye-off" : "eye"} size={20} color="#555" />
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={{ fontWeight: 300, fontSize: 12, marginBottom: 2 }}>A senha deve conter, no mínimo:</Text>
+                        <Text style={{ fontWeight: "300", fontSize: 12, marginBottom: 2 }}>A senha deve conter, no mínimo:</Text>
 
-                        <View style={{ flexDirection: 'row' }}>
-                            <Icon name={regraTamanho ? "check-circle" : "x-circle"} size={14} marginLeft={15} color={regraTamanho ? "green" : "red"} />
-                            <Text style={[styles.inputTitle, { fontSize: 12, marginLeft: 5, fontWeight: 200, color: regraTamanho ? "green" : "red", marginBottom: 2 }]}>6 caracteres</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Feather name={regraTamanho ? "check-circle" : "x-circle"} size={14} color={regraTamanho ? "green" : "red"} style={{marginLeft: 15}} />
+                            <Text style={[styles.inputTitle, { fontSize: 12, marginLeft: 5, fontWeight: "200", color: regraTamanho ? "green" : "red", marginBottom: 2 }]}>6 caracteres</Text>
                         </View>
 
-                        <View style={{ flexDirection: 'row' }}>
-                            <Icon name={regraNumero ? "check-circle" : "x-circle"} size={14} marginLeft={15} color={regraNumero ? "green" : "red"} />
-                            <Text style={[styles.inputTitle, { fontSize: 12, marginLeft: 5, fontWeight: 200, color: regraNumero ? "green" : "red", marginBottom: 15 }]}>1 número</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                            <Feather name={regraNumero ? "check-circle" : "x-circle"} size={14} color={regraNumero ? "green" : "red"} style={{marginLeft: 15}} />
+                            <Text style={[styles.inputTitle, { fontSize: 12, marginLeft: 5, fontWeight: "200", color: regraNumero ? "green" : "red" }]}>1 número</Text>
                         </View>
-
 
                         <View style={{ position: "relative" }}>
                             <Text style={styles.inputTitle}>Confirmação de Senha</Text>
                             <TextInput
                                 style={[styles.input, { marginBottom: 5 }, erroConfirm && { borderColor: '#FF3B3B', borderWidth: 1 }]}
                                 placeholder="Repita novamente a senha"
-                                placeholderTextColor="#A9A9'A9"
+                                placeholderTextColor="#A9A9A9"
                                 secureTextEntry={!mostrarConfirm}
                                 onChangeText={validarConfirmacao}
                                 value={confirmSenha}
                             />
-
                             <TouchableOpacity
-                                onPress={() => setMostrarSenha(!mostrarSenha)}
-                                style={{
-                                    position: "absolute",
-                                    right: 10,
-                                    top: 45
-                                }}
+                                onPress={() => setMostrarConfirm(!mostrarConfirm)}
+                                style={{ position: "absolute", right: 10, top: 45 }}
                             >
-                                <Feather
-                                    name={mostrarSenha ? "eye-off" : "eye"}
-                                    size={20}
-                                    color="#555"
-                                />
+                                <Feather name={mostrarConfirm ? "eye-off" : "eye"} size={20} color="#555" />
                             </TouchableOpacity>
                         </View>
 
                         {erroConfirm && confirmSenha.length > 0 && (
-                            <Text style={{ color: '#FF3B3B', marginBottom: 20 }}
-                            >As senhas não coincidem</Text>
+                            <Text style={{ color: '#FF3B3B', marginBottom: 20 }}>As senhas não coincidem</Text>
                         )}
 
-                        {senhaValida ? (
-                            <Link
-                                href="/home"
-                                style={[styles.botao, { backgroundColor: "#24BF94", paddingTop: 15 }]}
-                            >
+                        <TouchableOpacity
+                            style={[
+                                styles.botao, 
+                                { backgroundColor: (senhaValida && !loading) ? "#24BF94" : "#999" }
+                            ]}
+                            onPress={handleCadastrar}
+                            disabled={!senhaValida || loading}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#FFF" />
+                            ) : (
                                 <Text style={styles.textoBotao}>Cadastrar</Text>
-                            </Link>
-                        ) : (
-                            <TouchableOpacity
-                                style={[styles.botao, { backgroundColor: "#999" }]}
-                            >
-                                <Text style={styles.textoBotao}>Cadastrar</Text>
-                            </TouchableOpacity>
-                        )}
+                            )}
+                        </TouchableOpacity>
+
                     </View>
                 </ScrollView>
 
-                <View style={styles.viewcadastre}>
+                <View style={styles.viewcadastre}>0
                     <Text style={{ fontSize: 17 }}>Já possui uma conta? </Text>
                     <Link href={"/login"}>
                         <Text style={styles.cadastre}>Fazer login</Text>
@@ -169,12 +206,11 @@ export default function Cadastro() {
                 </View>
             </View>
         </View>
-    )
+    );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create<any>({
 
-    // CSS Padrão da página + Logo
     container: {
         flex: 1,
         justifyContent: "center",

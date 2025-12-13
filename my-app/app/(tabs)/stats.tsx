@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     Alert
 } from "react-native";
+import { rankingService } from "../../services/rankingApi";
 
 type RankingItem = {
     user_id: number;
@@ -17,9 +18,7 @@ type RankingItem = {
 
 export default function Ranking() {
     const [ranking, setRanking] = useState<RankingItem[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-
-    const API_URL = "http://localhost:3005";
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchRanking();
@@ -27,14 +26,8 @@ export default function Ranking() {
 
     const fetchRanking = async () => {
         try {
-            const response = await fetch(API_URL);
-            const data: { ranking?: RankingItem[] } = await response.json();
-
-            if (data.ranking) {
-                setRanking(data.ranking);
-            } else {
-                setRanking([]);
-            }
+            const data = await rankingService.getRanking();
+            setRanking(data);
         } catch (error) {
             console.error("Erro ao buscar ranking:", error);
             Alert.alert("Erro", "Não foi possível carregar o ranking.");
@@ -55,10 +48,9 @@ export default function Ranking() {
         );
     }
 
-    const firstPlace: RankingItem | undefined = ranking[0];
-    const secondPlace: RankingItem | undefined = ranking[1];
-    const thirdPlace: RankingItem | undefined = ranking[2];
-    const restOfRanking: RankingItem[] = ranking.slice(3);
+    const firstPlace = ranking[0];
+    const secondPlace = ranking[1];
+    const thirdPlace = ranking[2];
 
     return (
         <View style={styles.container}>
@@ -112,9 +104,11 @@ export default function Ranking() {
 
                 <ScrollView style={styles.scrollcontent}>
                     <View style={styles.rankList}>
-                        {restOfRanking.map((item, index) => (
+                        {ranking.map((item, index) => (
                             <View key={item.user_id} style={styles.rankItem}>
-                                <Text style={styles.rankPosition}>{index + 4}</Text>
+                                <Text style={styles.rankPosition}>
+                                    {index + 1}
+                                </Text>
 
                                 <View style={styles.rankUser}>
                                     <Image source={getAvatar()} style={styles.rankAvatar} />
@@ -142,7 +136,7 @@ export default function Ranking() {
     );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create<any>({
     container: {
         flex: 1,
         justifyContent: "center",
@@ -152,16 +146,13 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
     },
     logoContent: {
-        flex: 0.1,
-        justifyContent: "center",
-        marginTop: 60,
         flexDirection: "row",
         alignItems: "center",
+        marginTop: 60,
     },
     loginLogo: {
         width: 35,
@@ -210,18 +201,6 @@ const styles = StyleSheet.create({
         borderWidth: 3,
         borderColor: "#BF8970",
     },
-    topName: {
-        marginTop: 6,
-        fontSize: 12,
-        fontFamily: "Rubik",
-        textAlign: "center",
-        maxWidth: 80,
-    },
-    topPoints: {
-        fontSize: 10,
-        color: "#666",
-        fontFamily: "Rubik",
-    },
     scrollcontent: {
         flex: 1,
         width: "100%",
@@ -240,13 +219,11 @@ const styles = StyleSheet.create({
         alignItems: "center",
         paddingHorizontal: 20,
         paddingVertical: 12,
-        elevation: 2,
     },
     rankPosition: {
         width: 25,
         fontSize: 16,
         fontWeight: "900",
-        fontFamily: "Rubik",
     },
     rankUser: {
         flexDirection: "row",
@@ -262,12 +239,10 @@ const styles = StyleSheet.create({
     },
     rankName: {
         fontSize: 14,
-        fontFamily: "Rubik",
     },
     rankPoints: {
         fontSize: 14,
         fontWeight: "bold",
-        fontFamily: "Rubik",
-        color: "#24BF94",
+        color: "#000",
     },
 });
