@@ -9,14 +9,17 @@ import {
     Alert
 } from "react-native";
 
-export default function Ranking() {
-    const [ranking, setRanking] = useState([]);
-    const [loading, setLoading] = useState(true);
+type RankingItem = {
+    user_id: number;
+    user_name: string;
+    total_points: number;
+};
 
-    // URL da API (Ajuste conforme onde você está rodando)
-    // Se for Android Emulator: 'http://10.0.2.2:3005'
-    // Se for iOS ou Web: 'http://localhost:3005'
-    const API_URL = "http://10.0.2.2:3005/api/leaderboard/general";
+export default function Ranking() {
+    const [ranking, setRanking] = useState<RankingItem[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+
+    const API_URL = "http://localhost:3005";
 
     useEffect(() => {
         fetchRanking();
@@ -25,11 +28,12 @@ export default function Ranking() {
     const fetchRanking = async () => {
         try {
             const response = await fetch(API_URL);
-            const data = await response.json();
+            const data: { ranking?: RankingItem[] } = await response.json();
 
-            // O backend retorna { "ranking": [...] }
             if (data.ranking) {
                 setRanking(data.ranking);
+            } else {
+                setRanking([]);
             }
         } catch (error) {
             console.error("Erro ao buscar ranking:", error);
@@ -39,30 +43,27 @@ export default function Ranking() {
         }
     };
 
-    // Função auxiliar para pegar o Avatar (já que o backend não manda ainda)
     const getAvatar = () => {
         return require("../../assets/images/katherinepierce.jpg");
     };
 
     if (loading) {
         return (
-            <View style={[styles.container, { justifyContent: 'center' }]}>
+            <View style={[styles.container, { justifyContent: "center" }]}>
                 <ActivityIndicator size="large" color="#24BF94" />
             </View>
         );
     }
 
-    // Separa o Top 3 do resto da lista
-    const firstPlace = ranking[0];
-    const secondPlace = ranking[1];
-    const thirdPlace = ranking[2];
-    const restOfRanking = ranking.slice(3); // Do 4º em diante
+    const firstPlace: RankingItem | undefined = ranking[0];
+    const secondPlace: RankingItem | undefined = ranking[1];
+    const thirdPlace: RankingItem | undefined = ranking[2];
+    const restOfRanking: RankingItem[] = ranking.slice(3);
 
     return (
         <View style={styles.container}>
             <View style={styles.content}>
 
-                {/* LOGO HEADER */}
                 <View style={styles.logoContent}>
                     <Image
                         source={require("../../assets/images/LogoBG.png")}
@@ -71,63 +72,65 @@ export default function Ranking() {
                     <Text style={styles.title}>FUTQUIZ</Text>
                 </View>
 
-                {/* PODIUM (TOP 3) - Só exibe se tiver dados suficientes */}
                 <View style={styles.topContainer}>
-                    {/* 2º LUGAR (Esquerda) */}
                     {secondPlace && (
                         <View style={styles.topItemSmall}>
                             <Image source={getAvatar()} style={styles.avatarSmall} />
                             <Text style={styles.topName} numberOfLines={1}>
                                 {secondPlace.user_name}
                             </Text>
-                            <Text style={styles.topPoints}>{secondPlace.total_points}</Text>
+                            <Text style={styles.topPoints}>
+                                {secondPlace.total_points}
+                            </Text>
                         </View>
                     )}
 
-                    {/* 1º LUGAR (Centro/Maior) */}
                     {firstPlace && (
                         <View style={styles.topItemMain}>
                             <Image source={getAvatar()} style={styles.avatarMain} />
                             <Text style={styles.topName} numberOfLines={1}>
                                 {firstPlace.user_name}
                             </Text>
-                            <Text style={[styles.topPoints, { fontSize: 14, fontWeight: 'bold' }]}>
+                            <Text style={[styles.topPoints, { fontSize: 14, fontWeight: "bold" }]}>
                                 {firstPlace.total_points}
                             </Text>
                         </View>
                     )}
 
-                    {/* 3º LUGAR (Direita) */}
                     {thirdPlace && (
                         <View style={styles.topItemSmall}>
                             <Image source={getAvatar()} style={styles.avatarSmallTwo} />
                             <Text style={styles.topName} numberOfLines={1}>
                                 {thirdPlace.user_name}
                             </Text>
-                            <Text style={styles.topPoints}>{thirdPlace.total_points}</Text>
+                            <Text style={styles.topPoints}>
+                                {thirdPlace.total_points}
+                            </Text>
                         </View>
                     )}
                 </View>
 
-                {/* LISTA DO RESTANTE (4º LUGAR EM DIANTE) */}
                 <ScrollView style={styles.scrollcontent}>
                     <View style={styles.rankList}>
                         {restOfRanking.map((item, index) => (
-                            <View key={item.user_id || index} style={styles.rankItem}>
-                                {/* A posição é index + 4, pois já mostramos 3 lá em cima */}
+                            <View key={item.user_id} style={styles.rankItem}>
                                 <Text style={styles.rankPosition}>{index + 4}</Text>
 
                                 <View style={styles.rankUser}>
                                     <Image source={getAvatar()} style={styles.rankAvatar} />
-                                    <Text style={styles.rankName}>{item.user_name}</Text>
+                                    <Text style={styles.rankName}>
+                                        {item.user_name}
+                                    </Text>
                                 </View>
 
-                                <Text style={styles.rankPoints}>{item.total_points}</Text>
+                                <Text style={styles.rankPoints}>
+                                    {item.total_points}
+                                </Text>
                             </View>
                         ))}
 
                         {ranking.length === 0 && (
-                            <Text style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>
+                            <Text style={{ textAlign: "center", marginTop: 20, color: "#999" }}>
                                 Nenhum jogador no ranking ainda.
                             </Text>
                         )}
@@ -158,30 +161,29 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         marginTop: 60,
         flexDirection: "row",
-        alignItems: 'center'
+        alignItems: "center",
     },
     loginLogo: {
         width: 35,
         height: 35,
-        marginBottom: 0,
         marginRight: 10,
     },
     title: {
         fontFamily: "Rubik",
         fontSize: 25,
-        fontWeight: "500", // Corrigido de 500 (number) para "500" (string) ou 'bold'
+        fontWeight: "500",
     },
     topContainer: {
         flexDirection: "row",
         alignItems: "flex-end",
         marginTop: 20,
         marginBottom: 30,
-        height: 150, // Altura fixa para alinhar o podium
+        height: 150,
     },
     topItemMain: {
         alignItems: "center",
         marginHorizontal: 15,
-        marginBottom: 20, // Levanta um pouco o 1º lugar visualmente
+        marginBottom: 20,
     },
     topItemSmall: {
         alignItems: "center",
@@ -217,7 +219,7 @@ const styles = StyleSheet.create({
     },
     topPoints: {
         fontSize: 10,
-        color: '#666',
+        color: "#666",
         fontFamily: "Rubik",
     },
     scrollcontent: {
@@ -227,8 +229,6 @@ const styles = StyleSheet.create({
     rankList: {
         width: "90%",
         alignSelf: "center",
-        borderTopLeftRadius: 25,
-        borderTopRightRadius: 25,
         paddingTop: 20,
         paddingBottom: 50,
     },
@@ -240,10 +240,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         paddingHorizontal: 20,
         paddingVertical: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
         elevation: 2,
     },
     rankPosition: {
@@ -251,7 +247,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "900",
         fontFamily: "Rubik",
-        color: '#333'
     },
     rankUser: {
         flexDirection: "row",
@@ -268,12 +263,11 @@ const styles = StyleSheet.create({
     rankName: {
         fontSize: 14,
         fontFamily: "Rubik",
-        fontWeight: "400",
     },
     rankPoints: {
         fontSize: 14,
         fontWeight: "bold",
         fontFamily: "Rubik",
-        color: '#24BF94',
+        color: "#24BF94",
     },
 });
