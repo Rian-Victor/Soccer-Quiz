@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://172.20.10.6:3003";
+import { getAxiosInstance } from "../app/hooks/useAxios";
 
 export interface QuestionCreate {
   statement: string;
@@ -38,175 +38,201 @@ export interface AnswerResponse {
   text: string;
   correct: boolean;
 }
-export interface TeamCreate {
-  name: string;
-  country: string;
-  members: number[];
-}
 
-export interface TeamResponse {
-  id: string;
-  name: string;
-  country: string;
-  members: number[];
-}
-
+// SRP: answerService lida apenas com os endpoints de respostas.
+// OCP: novos comportamentos podem ser estendidos neste objeto sem alterar os consumidores existentes.
 export const answerService = {
   async createAnswer(answerData: AnswerCreate): Promise<AnswerResponse> {
     console.log("Criando resposta...");
 
-    const response = await fetch(`${API_BASE_URL}/answers`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(answerData),
-    });
-
-    console.log("Status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro:", errorText);
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.post<AnswerResponse>(
+        "/answers",
+        answerData
+      );
+      console.log("Status:", response.status);
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao criar resposta";
+      console.error("Erro:", errorMessage);
       throw new Error(
-        `Erro ao criar resposta: ${response.status} - ${errorText}`
+        `Erro ao criar resposta: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
       );
     }
-
-    return await response.json();
   },
 
   async getAnswersByQuestion(questionId: string): Promise<AnswerResponse[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/answers?question_id=${questionId}`
-    );
-
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar respostas: ${response.statusText}`);
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.get<AnswerResponse[]>("/answers", {
+        params: { question_id: questionId },
+      });
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao buscar respostas";
+      throw new Error(`Erro ao buscar respostas: ${errorMessage}`);
     }
-
-    return await response.json();
   },
 };
 
+// SRP: questionService agrupa apenas a lógica de perguntas.
+// OCP: a interface permanece estável para os componentes, mesmo quando novos métodos são adicionados.
 export const questionService = {
   async createQuestion(
     questionData: QuestionCreate
   ): Promise<QuestionResponse> {
-    const response = await fetch(`${API_BASE_URL}/questions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(questionData),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro detalhado da API:", errorText);
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.post<QuestionResponse>(
+        "/questions",
+        questionData
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao criar pergunta";
+      console.error("Erro detalhado da API:", errorMessage);
       throw new Error(
-        `Erro ao criar pergunta: ${response.status} - ${errorText}`
+        `Erro ao criar pergunta: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
       );
     }
-
-    return await response.json();
   },
 
   async getQuestions(
     skip: number = 0,
     limit: number = 100
   ): Promise<QuestionResponse[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/questions?skip=${skip}&limit=${limit}`
-    );
-
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar perguntas: ${response.statusText}`);
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.get<QuestionResponse[]>(
+        "/questions",
+        {
+          params: { skip, limit },
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao buscar perguntas";
+      throw new Error(`Erro ao buscar perguntas: ${errorMessage}`);
     }
-
-    return await response.json();
   },
 
   async getQuestionById(questionId: string): Promise<QuestionResponse> {
-    const response = await fetch(`${API_BASE_URL}/questions/${questionId}`);
-
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar pergunta: ${response.statusText}`);
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.get<QuestionResponse>(
+        `/questions/${questionId}`
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao buscar pergunta";
+      throw new Error(`Erro ao buscar pergunta: ${errorMessage}`);
     }
-
-    return await response.json();
   },
 
   async updateQuestion(
     questionId: string,
     questionData: Partial<QuestionCreate>
   ): Promise<QuestionResponse> {
-    const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(questionData),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Erro ao atualizar pergunta: ${response.statusText}`);
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.patch<QuestionResponse>(
+        `/questions/${questionId}`,
+        questionData
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao atualizar pergunta";
+      throw new Error(`Erro ao atualizar pergunta: ${errorMessage}`);
     }
-
-    return await response.json();
   },
 
   async deleteQuestion(questionId: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      throw new Error(`Erro ao deletar pergunta: ${response.statusText}`);
+    try {
+      const axiosInstance = getAxiosInstance();
+      await axiosInstance.delete(`/questions/${questionId}`);
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao deletar pergunta";
+      throw new Error(`Erro ao deletar pergunta: ${errorMessage}`);
     }
   },
 };
 
+// SRP: teamService concentra as chamadas relacionadas a times.
+// OCP: permite incluir ações adicionais sem impactar quem consome o objeto hoje.
 export const teamService = {
   async createTeam(teamData: TeamCreate): Promise<TeamResponse> {
-    const response = await fetch(`${API_BASE_URL}/teams`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(teamData),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erro ao criar time: ${response.status} - ${errorText}`);
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.post<TeamResponse>(
+        "/teams",
+        teamData
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao criar time";
+      throw new Error(
+        `Erro ao criar time: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
+      );
     }
-
-    return await response.json();
   },
 
   async getTeams(
     skip: number = 0,
     limit: number = 100
   ): Promise<TeamResponse[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/teams?skip=${skip}&limit=${limit}`
-    );
-
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar times: ${response.statusText}`);
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.get<TeamResponse[]>("/teams", {
+        params: { skip, limit },
+      });
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao buscar times";
+      throw new Error(`Erro ao buscar times: ${errorMessage}`);
     }
-
-    return await response.json();
   },
 
   async getTeamById(teamId: string): Promise<TeamResponse> {
-    const response = await fetch(`${API_BASE_URL}/teams/${teamId}`);
-
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar time: ${response.statusText}`);
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.get<TeamResponse>(
+        `/teams/${teamId}`
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao buscar time";
+      throw new Error(`Erro ao buscar time: ${errorMessage}`);
     }
-
-    return await response.json();
   },
 };
