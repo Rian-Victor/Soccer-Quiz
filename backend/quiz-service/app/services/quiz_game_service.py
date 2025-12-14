@@ -195,25 +195,34 @@ class QuizGameService:
         session = await self.session_repo.get_active_by_user(user_id)
         if not session:
             return None
-            
-        current_q_id = session.questions[session.current_question_index]
-        question = await self.question_repo.get_by_id(current_q_id)
-        answers = await self.answer_repo.get_by_question(current_q_id)
-
-        answers_data = [
-            {"id": str(a["id"]), "text": a["text"]} for a in answers
-        ]
         
-        return {
-            "session_id": str(session.id),
-            "progress": f"{session.current_question_index + 1}/{len(session.questions)}",
-            "current_question": {
-                "id": str(question["id"]),
-                "statement": question["statement"],
-                "topic": getattr(question, "topic", "Geral"), 
-                "answers": answers_data
-            }
+        # Retornar o formato completo da sessão para compatibilidade com frontend
+        session_dict = {
+            "id": str(session.id),
+            "user_id": session.user_id,
+            "quiz_type": session.quiz_type.value if hasattr(session.quiz_type, 'value') else str(session.quiz_type),
+            "team_id": session.team_id,
+            "quiz_id": str(session.quiz_id) if session.quiz_id else None,
+            "status": session.status.value if hasattr(session.status, 'value') else str(session.status),
+            "questions": session.questions,
+            "current_question_index": session.current_question_index,
+            "answers": [
+                {
+                    "question_id": str(a.question_id),
+                    "selected_answer_id": str(a.selected_answer_id),
+                    "time_taken_seconds": a.time_taken_seconds,
+                    "points_earned": a.points_earned
+                } for a in session.answers
+            ],
+            "total_points": session.total_points,
+            "correct_answers": session.correct_answers,
+            "wrong_answers": session.wrong_answers,
+            "started_at": session.started_at.isoformat() if hasattr(session.started_at, 'isoformat') else str(session.started_at),
+            "finished_at": session.finished_at.isoformat() if session.finished_at and hasattr(session.finished_at, 'isoformat') else (str(session.finished_at) if session.finished_at else None),
+            "total_time_seconds": session.total_time_seconds
         }
+        
+        return session_dict
     
     async def abandon_quiz(self, session_id: str) -> QuizSession:
         """
