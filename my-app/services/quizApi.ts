@@ -2,10 +2,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API_BASE_URL = "http://192.168.1.211:3003";
 
-export interface QuestionCreate {
+export interface QuestionCreateRequest {
     statement: string;
     topic: string;
     difficulty: string;
+    options: string[];
+    correct_option_index: number;
+    team_id?: string | null;
 }
 
 export interface QuestionResponse {
@@ -13,6 +16,8 @@ export interface QuestionResponse {
     statement: string;
     topic: string;
     difficulty: string;
+    options?: string[];
+    correct_option_index?: number;
 }
 
 export interface TeamCreate {
@@ -28,44 +33,21 @@ export interface TeamResponse {
     members: number[];
 }
 
-export interface AnswerCreate {
-    questionId: string;
-    text: string;
-    correct: boolean;
-}
-
-export interface AnswerResponse {
-    id: string;
-    questionId: string;
-    text: string;
-    correct: boolean;
-}
-
-export const answerService = {
-    async createAnswer(answerData: AnswerCreate): Promise<AnswerResponse> {
-        const response = await fetch(`${API_BASE_URL}/answers`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(answerData),
-        });
-        if (!response.ok) throw new Error("Erro ao criar resposta");
-        return await response.json();
-    },
-    async getAnswersByQuestion(questionId: string): Promise<AnswerResponse[]> {
-        const response = await fetch(`${API_BASE_URL}/answers?question_id=${questionId}`);
-        if (!response.ok) throw new Error("Erro ao buscar respostas");
-        return await response.json();
-    },
-};
-
 export const questionService = {
-    async createQuestion(questionData: QuestionCreate): Promise<QuestionResponse> {
+    async createFullQuestion(questionData: QuestionCreateRequest): Promise<any> {
         const response = await fetch(`${API_BASE_URL}/questions`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
             body: JSON.stringify(questionData),
         });
-        if (!response.ok) throw new Error("Erro ao criar pergunta");
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Erro ao criar: ${errorText}`);
+        }
         return await response.json();
     },
 
@@ -75,22 +57,18 @@ export const questionService = {
         return await response.json();
     },
 
-    async updateQuestion(questionId: string, questionData: Partial<QuestionCreate>): Promise<QuestionResponse> {
-        const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(questionData),
-        });
-        if (!response.ok) throw new Error("Erro ao atualizar pergunta");
+    async updateQuestion(questionId: string, questionData: any): Promise<any> {
+        return {};
+    },
+};
+
+export const answerService = {
+    async getAnswersByQuestion(questionId: string): Promise<any[]> {
+        const response = await fetch(`${API_BASE_URL}/answers?question_id=${questionId}`);
+        if (!response.ok) return [];
         return await response.json();
     },
-
-    async deleteQuestion(questionId: string): Promise<void> {
-        const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
-            method: "DELETE",
-        });
-        if (!response.ok) throw new Error("Erro ao deletar pergunta");
-    }
+    async createAnswer(data: any): Promise<any> { return {}; }
 };
 
 export const teamService = {
@@ -105,7 +83,7 @@ export const teamService = {
     },
     async getTeams(): Promise<TeamResponse[]> {
         const response = await fetch(`${API_BASE_URL}/teams`);
-        if (!response.ok) throw new Error("Erro ao buscar times");
+        if (!response.ok) return [];
         return await response.json();
     },
 };
@@ -119,37 +97,39 @@ export const quizGameService = {
         };
     },
 
-    async startQuiz(quizType = "general") {
+    async startQuiz(quizType: "general" | "team" = "general", teamId?: string) {
         const headers = await this.getHeaders();
-        const response = await fetch(`${API_BASE_URL}/api/quiz/start`, {
+        const response = await fetch(`${API_BASE_URL}/quizzes/start`, {
             method: "POST",
             headers: headers,
-            body: JSON.stringify({ quiz_type: quizType })
+            body: JSON.stringify({ quiz_type: quizType, team_id: teamId || null })
         });
 
         if (!response.ok) {
             const txt = await response.text();
-            throw new Error(`Erro ao iniciar: ${txt}`);
+            throw new Error(txt);
         }
         return await response.json();
     },
 
     async getCurrentQuiz() {
         const headers = await this.getHeaders();
-        const response = await fetch(`${API_BASE_URL}/api/quiz/current`, {
+        const response = await fetch(`${API_BASE_URL}/quizzes/current`, {
             method: "GET",
             headers: headers
         });
 
         if (response.status === 404) return null;
         if (!response.ok) throw new Error("Erro ao buscar jogo atual");
-        
+
         return await response.json();
     },
 
     async submitAnswer(sessionId: string, questionId: string, answerId: string, timeTaken: number) {
         const headers = await this.getHeaders();
-        const response = await fetch(`${API_BASE_URL}/api/quiz/answer`, {
+        console.log("📤 Enviando Resposta:", { sessionId, questionId, answerId });
+
+        const response = await fetch(`${API_BASE_URL}/quizzes/answer`, {
             method: "POST",
             headers: headers,
             body: JSON.stringify({
@@ -160,7 +140,11 @@ export const quizGameService = {
             })
         });
 
-        if (!response.ok) throw new Error("Erro ao enviar resposta");
+        if (!response.ok) {
+            const errorMsg = await response.text();
+            console.error("❌ Erro Backend:", response.status, errorMsg);
+            throw new Error(errorMsg || "Erro desconhecido ao enviar resposta");
+        }
         return await response.json();
     }
 };
