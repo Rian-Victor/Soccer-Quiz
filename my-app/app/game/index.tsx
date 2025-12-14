@@ -1,20 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import {
-    StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView
+    StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { quizGameService } from '../../services/quizApi'; 
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { quizGameService } from '../../services/quizApi';
 import { Feather } from '@expo/vector-icons';
 
 export default function GameScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
 
     const [loading, setLoading] = useState(true);
     const [currentQuiz, setCurrentQuiz] = useState<any>(null);
-    const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
 
+    const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
     const [timer, setTimer] = useState(15);
     const [isActive, setIsActive] = useState(false);
+
+    const [gameState, setGameState] = useState<'playing' | 'feedback'>('playing');
+    const [resultData, setResultData] = useState<{ correct: boolean, correctId: string } | null>(null);
+
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         iniciarJogo();
@@ -26,81 +33,90 @@ export default function GameScreen() {
             interval = setInterval(() => {
                 setTimer((prev) => prev - 1);
             }, 1000);
-        } else if (timer === 0) {
+        } else if (timer === 0 && gameState === 'playing') {
             setIsActive(false);
-            Alert.alert("Tempo Esgotado!", "Você demorou demais.", [
-                { text: "Tentar Próxima", onPress: () => handleResponder(true) }
-            ]);
+            handleTempoEsgotado();
         }
         return () => clearInterval(interval);
-    }, [isActive, timer]);
+    }, [isActive, timer, gameState]);
 
     const iniciarJogo = async () => {
         try {
             setLoading(true);
-            
             let quizData = await quizGameService.getCurrentQuiz();
 
             if (!quizData) {
-                await quizGameService.startQuiz("general");
+                const mode = (params.mode as "general" | "team") || "general";
+                const teamId = params.teamId as string;
+                await quizGameService.startQuiz(mode, teamId);
                 quizData = await quizGameService.getCurrentQuiz();
             }
-
-            carregarPergunta(quizData);
+            prepararRodada(quizData);
         } catch (error) {
             console.log(error);
-            Alert.alert("Erro", "Não foi possível iniciar o jogo. Verifique a conexão.");
+            Alert.alert("Erro", "Falha ao iniciar. Tente novamente.");
             router.back();
         }
     };
 
-    const carregarPergunta = (data: any) => {
+    const prepararRodada = (data: any) => {
         if (!data) return;
-        console.log("Dados da pergunta:", data);
         setCurrentQuiz(data);
-        setTimer(15); 
-        setSelectedAnswer(null); 
-        setIsActive(true); 
+        setTimer(15);
+        setSelectedAnswer(null);
+        setGameState('playing');
+        setResultData(null);
+        setSubmitting(false);
+        setIsActive(true);
         setLoading(false);
     };
 
+    const handleTempoEsgotado = () => {
+        Alert.alert("Tempo Esgotado!", "Que pena, acabou o tempo.", [
+            { text: "Continuar", onPress: () => handleResponder(true) }
+        ]);
+    };
+
     const handleResponder = async (tempoEsgotado = false) => {
+        if (submitting) return;
         if (!selectedAnswer && !tempoEsgotado) return;
 
-        setIsActive(false); 
-        setLoading(true);
+        setSubmitting(true);
+        setIsActive(false);
+        setGameState('feedback');
 
         try {
             const tempoGasto = 15 - timer;
-            const respostaParaEnviar = selectedAnswer || "tempo_esgotado";
+            const respostaEnviar = selectedAnswer || "tempo_esgotado";
 
             const resultado = await quizGameService.submitAnswer(
                 currentQuiz.session_id,
                 currentQuiz.current_question.id,
-                respostaParaEnviar,
+                respostaEnviar,
                 tempoGasto
             );
 
-            console.log("Resultado:", resultado);
+            setResultData({
+                correct: resultado.is_correct,
+                correctId: resultado.correct_answer_id
+            });
 
-            if (resultado.is_correct) {
-                Alert.alert("GOLAÇO! ⚽", `Você ganhou ${resultado.points_earned} pontos!`);
-            } else {
-                Alert.alert("NA TRAVE! ❌", "Errou ou o tempo acabou.");
-            }
-
-            if (resultado.is_quiz_finished) {
-                Alert.alert("Fim de Jogo!", `Pontuação Final: ${resultado.new_total_points}`, [
-                    { text: "Voltar para Home", onPress: () => router.replace("/(tabs)/home") }
-                ]);
-            } else {
-                const nextQuiz = await quizGameService.getCurrentQuiz();
-                carregarPergunta(nextQuiz);
-            }
+            setTimeout(async () => {
+                if (resultado.is_quiz_finished) {
+                    Alert.alert("Fim de Jogo!", `Pontuação Final: ${resultado.new_total_points}`, [
+                        { text: "Voltar para Home", onPress: () => router.replace("/(tabs)/home") }
+                    ]);
+                } else {
+                    const nextQuiz = await quizGameService.getCurrentQuiz();
+                    prepararRodada(nextQuiz);
+                }
+            }, 2000);
 
         } catch (error) {
-            Alert.alert("Erro", "Falha ao enviar resposta");
-            setLoading(false);
+            Alert.alert("Atenção", "Erro ao processar resposta. Tente novamente.");
+            setGameState('playing');
+            setSubmitting(false);
+            setIsActive(true);
         }
     };
 
@@ -108,7 +124,7 @@ export default function GameScreen() {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#24BF94" />
-                <Text style={{ marginTop: 10, color: '#555' }}>Carregando o campo...</Text>
+                <Text style={{ marginTop: 10, color: '#555' }}>Iniciando quiz...</Text>
             </View>
         );
     }
@@ -116,146 +132,156 @@ export default function GameScreen() {
     if (!currentQuiz) return null;
 
     const { current_question, progress } = currentQuiz;
+    const isButtonDisabled = !selectedAnswer || gameState === 'feedback' || submitting;
 
     return (
         <SafeAreaView style={styles.container}>
+
             <View style={styles.header}>
-                <View style={styles.badge}>
-                    <Text style={styles.badgeText}>Questão {progress}</Text>
-                </View>
-                <View style={[styles.badge, { backgroundColor: timer < 5 ? '#FF3B30' : '#24BF94' }]}>
-                    <Feather name="clock" size={16} color="white" style={{ marginRight: 5 }} />
-                    <Text style={styles.badgeText}>{timer}s</Text>
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Feather name="chevron-left" size={28} color="#004D40" />
+                </TouchableOpacity>
+                <Text style={styles.progressText}>{progress}</Text>
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Feather name="x" size={24} color="#004D40" />
+                </TouchableOpacity>
+            </View>
+
+            {/* TIMER */}
+            <View style={styles.timerContainer}>
+                <View style={[styles.timerCircle, timer < 5 && styles.timerCircleRed]}>
+                    <Text style={[styles.timerText, timer < 5 && { color: '#FF3B30' }]}>{timer}</Text>
                 </View>
             </View>
 
-            <View style={styles.questionContainer}>
-                <Text style={styles.category}>{current_question.topic}</Text>
+            <View style={styles.questionCard}>
                 <Text style={styles.questionText}>{current_question.statement}</Text>
             </View>
 
             <View style={styles.optionsContainer}>
-                {current_question.answers.map((answer: any) => (
-                    <TouchableOpacity
-                        key={answer.id}
-                        style={[
-                            styles.optionButton,
-                            selectedAnswer === answer.id && styles.optionSelected
-                        ]}
-                        onPress={() => setSelectedAnswer(answer.id)}
-                    >
-                        <Text style={[
-                            styles.optionText,
-                            selectedAnswer === answer.id && styles.optionTextSelected
-                        ]}>
-                            {answer.text}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
+                {current_question.answers.map((answer: any) => {
+
+                    let itemStyle = styles.optionButton;
+                    let textStyle = styles.optionText;
+                    let iconName = "circle";
+                    let iconColor = "#ccc";
+
+                    const isSelected = selectedAnswer === answer.id;
+
+                    if (gameState === 'playing') {
+                        if (isSelected) {
+                            iconName = "check-circle";
+                            iconColor = "#333";
+                        }
+                    }
+                    else if (gameState === 'feedback' && resultData) {
+                        if (isSelected) {
+                            if (resultData.correct) {
+                                itemStyle = styles.optionCorrect;
+                                iconName = "check-circle";
+                                iconColor = "#004D40";
+                            } else {
+                                itemStyle = styles.optionWrong;
+                                iconName = "x-circle"; 
+                                iconColor = "#591313";
+                            }
+                        }
+                        else if (answer.id === resultData.correctId) {
+                            itemStyle = styles.optionCorrect;
+                            iconName = "check-circle";
+                            iconColor = "#004D40";
+                        }
+                    }
+
+                    return (
+                        <TouchableOpacity
+                            key={answer.id}
+                            style={itemStyle}
+                            disabled={gameState === 'feedback' || submitting}
+                            onPress={() => setSelectedAnswer(answer.id)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={textStyle}>{answer.text}</Text>
+                            <Feather name={iconName as any} size={24} color={iconColor} />
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
 
             <View style={styles.footer}>
                 <TouchableOpacity
-                    style={[styles.submitButton, !selectedAnswer && styles.submitButtonDisabled]}
-                    disabled={!selectedAnswer}
+                    style={[styles.submitButton, isButtonDisabled && styles.submitButtonDisabled]}
+                    disabled={isButtonDisabled}
                     onPress={() => handleResponder(false)}
                 >
-                    <Text style={styles.submitButtonText}>CHUTAR AO GOL</Text>
+                    <Text style={styles.submitButtonText}>
+                        {submitting ? "Proxima..." : "Enviar"}
+                    </Text>
                 </TouchableOpacity>
             </View>
+
         </SafeAreaView>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F1F1F1',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: 20,
-        marginTop: 30
-    },
-    badge: {
-        backgroundColor: '#333',
-        paddingVertical: 8,
-        paddingHorizontal: 15,
-        borderRadius: 20,
-        flexDirection: 'row',
-        alignItems: 'center'
-    },
-    badgeText: {
-        color: 'white',
-        fontWeight: 'bold',
-    },
-    questionContainer: {
-        padding: 20,
-        marginTop: 10,
-    },
-    category: {
-        color: '#24BF94',
-        fontWeight: 'bold',
-        textTransform: 'uppercase',
-        marginBottom: 10,
-    },
-    questionText: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#333',
-        lineHeight: 30,
-    },
-    optionsContainer: {
-        padding: 20,
-        flex: 1,
-    },
+const styles = StyleSheet.create<any>({
+    container: { flex: 1, backgroundColor: '#F1F3F4' },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+    header: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10, alignItems: 'center' },
+    progressText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+
+    timerContainer: { alignItems: 'center', marginTop: 10, marginBottom: 10 },
+    timerCircle: { width: 55, height: 55, borderRadius: 30, borderWidth: 4, borderColor: '#24BF94', justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' },
+    timerCircleRed: { borderColor: '#FF3B30' },
+    timerText: { fontSize: 18, fontWeight: 'bold', color: '#24BF94' },
+
+    questionCard: { backgroundColor: 'white', marginHorizontal: 20, padding: 30, borderRadius: 20, marginBottom: 20, elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5 },
+    questionText: { fontSize: 18, fontWeight: 'bold', color: '#333', textAlign: 'center', lineHeight: 24 },
+
+    optionsContainer: { paddingHorizontal: 20, flex: 1 },
+
     optionButton: {
         backgroundColor: 'white',
-        padding: 20,
-        borderRadius: 15,
-        marginBottom: 15,
-        borderWidth: 2,
-        borderColor: 'transparent',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3.84,
-        elevation: 2,
-    },
-    optionSelected: {
-        borderColor: '#24BF94',
-        backgroundColor: '#E8FAF6',
-    },
-    optionText: {
-        fontSize: 16,
-        color: '#333',
-    },
-    optionTextSelected: {
-        fontWeight: 'bold',
-        color: '#24BF94',
-    },
-    footer: {
-        padding: 20,
-        paddingBottom: 40,
-    },
-    submitButton: {
-        backgroundColor: '#24BF94',
-        padding: 18,
-        borderRadius: 15,
+        paddingVertical: 15,
+        paddingHorizontal: 20,
+        borderRadius: 30,
+        marginBottom: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
+        elevation: 1
     },
-    submitButtonDisabled: {
-        backgroundColor: '#CCC',
+    optionText: { fontSize: 16, color: '#333', fontWeight: '500' },
+
+    optionCorrect: {
+        backgroundColor: '#A8D5C6',
+        paddingVertical: 15,
+        paddingHorizontal: 20,
+        borderRadius: 30,
+        marginBottom: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#24BF94'
     },
-    submitButtonText: {
-        color: 'white',
-        fontSize: 18,
-        fontWeight: 'bold',
-    }
+
+    optionWrong: {
+        backgroundColor: '#F29898',
+        paddingVertical: 15,
+        paddingHorizontal: 20,
+        borderRadius: 30,
+        marginBottom: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#D32F2F'
+    },
+
+    footer: { padding: 20, paddingBottom: 20 },
+    submitButton: { backgroundColor: '#24BF94', padding: 16, borderRadius: 30, alignItems: 'center' },
+    submitButtonDisabled: { backgroundColor: '#CCC' },
+    submitButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold' }
 });
