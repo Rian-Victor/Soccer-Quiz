@@ -268,3 +268,32 @@ class EmailService:
         </body>
         </html>
         """
+    
+    @staticmethod
+    async def send_invite_email(to_email: str, inviter_name: str) -> bool:
+        """Envia email de convite"""
+        logger.info(f"🚀 Enviando convite para {to_email}")
+        
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; text-align: center; padding: 20px;">
+            <div style="max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                <h1 style="color: #28a745;">⚽ Você foi Convocado!</h1>
+                <p style="font-size: 16px; color: #555;">
+                    O jogador <strong>{inviter_name}</strong> está te desafiando para uma partida no FutQuiz!
+                </p>
+                <div style="background: #e9ecef; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                    <p style="margin: 0; font-weight: bold;">"Duvido você acertar mais que eu!"</p>
+                </div>
+                <a href="http://localhost:3000" style="background-color: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">Aceitar Desafio</a>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return await EmailService._send_smtp(
+            to_email=to_email,
+            subject=f"⚽ {inviter_name} te desafiou!",
+            html_body=html_body
+        )
