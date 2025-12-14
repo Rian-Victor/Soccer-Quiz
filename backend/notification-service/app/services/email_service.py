@@ -193,3 +193,78 @@ class EmailService:
         </body>
         </html>
         """
+    
+    @staticmethod
+    async def send_quiz_notification_batch(title: str, difficulty: str) -> bool:
+        """
+        Envia notificação de novo quiz.
+        """
+        target_email = settings.SMTP_USER
+
+        if not target_email:
+                logger.warning("⚠️ Sem email de destino configurado para teste de notificação.")
+                return False
+
+        logger.info(f"🚀 [Batch Simulation] Iniciando envio em massa para o quiz '{title}'...")
+            
+        html_body = EmailService._build_new_quiz_html(title, difficulty)
+
+        # Envia apenas 1 email representando o envio em massa
+        success = await EmailService._send_smtp(
+            to_email=target_email,
+            subject=f"⚽ Novo Desafio: {title}",
+            html_body=html_body
+        )
+        
+        if success:
+            logger.info(f"✅ [Batch Simulation] Notificação enviada com sucesso para Admin ({target_email})")
+        
+        return success
+
+    @staticmethod
+    def _build_new_quiz_html(title: str, difficulty: str) -> str:
+        """HTML do email de NOVO QUIZ"""
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }}
+                .container {{ max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); overflow: hidden; }}
+                .header {{ background-color: #1a237e; padding: 30px 20px; text-align: center; }} /* Cor Azul Índigo para diferenciar */
+                .header h1 {{ margin: 0; color: #ffffff; font-size: 28px; }}
+                .content {{ padding: 40px 30px; color: #333333; line-height: 1.6; text-align: center; }}
+                .tag {{ background-color: #ffc107; color: #333; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; display: inline-block; margin: 10px 0; }}
+                .button {{ display: inline-block; background-color: #1a237e; color: #ffffff !important; padding: 15px 35px; text-decoration: none; border-radius: 50px; font-weight: bold; margin-top: 20px; }}
+                .footer {{ background-color: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #888; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>⚽ Novo Desafio Disponível!</h1>
+                </div>
+                
+                <div class="content">
+                    <h2>O apito inicial soou! 📢</h2>
+                    <p>Um novo quiz acabou de ser adicionado à plataforma.</p>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin: 0; color: #1a237e;">{title}</h3>
+                        <br>
+                        <span class="tag">Dificuldade: {difficulty}</span>
+                    </div>
+
+                    <p>Você está preparado para assumir a liderança do ranking?</p>
+                    
+                    <a href="#" class="button">Jogar Agora ⚽</a>
+                </div>
+                
+                <div class="footer">
+                    <p>&copy; 2025 FutQuiz App - Notificações de Gameplay</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """

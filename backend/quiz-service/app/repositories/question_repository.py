@@ -6,11 +6,10 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.interfaces.repositories import IQuestionRepository
 from app.database import get_database
 
 
-class QuestionRepository(IQuestionRepository):
+class QuestionRepository:
     """Implementação do repositório de perguntas com MongoDB"""
     
     def __init__(self, db: AsyncIOMotorDatabase):
@@ -71,19 +70,26 @@ class QuestionRepository(IQuestionRepository):
         except InvalidId:
             return False
         
-    async def get_random_questions(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """
-        Seleciona perguntas aleatórias direto no MongoDB (Alta Performance)
-        """
-        pipeline = [
-            {"$sample": {"size": limit}}
-        ]
+    async def get_random_questions(self, limit: int = 10, team_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        pipeline = []
+
+        # 1. ESTÁGIO DE FILTRO (MATCH)
+        if team_id:
+            pipeline.append({
+                "$match": {"team_id": team_id}
+            })
         
+        # 2. ESTÁGIO DE SORTEIO (SAMPLE)
+        pipeline.append({
+            "$sample": {"size": limit}
+        })
+
+        # Executa a agregação
         cursor = self.collection.aggregate(pipeline)
-        
-        questions = []
-        async for doc in cursor:
-            questions.append(self._convert_id(doc))
+        questions = await cursor.to_list(length=limit)
+  
+        for q in questions:
+            q["id"] = str(q["_id"])
             
         return questions
 

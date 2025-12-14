@@ -6,10 +6,13 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
 from app.database import get_database
+from app.schemas.question_schemas import QuestionCreateRequest, QuestionDB, QuestionBase
+from app.dependencies import get_question_admin_service, get_question_repo
 
 from app.repositories.question_repository import QuestionRepository
-from app.interfaces.repositories import IQuestionRepository
-
+from app.services.question_admin_service import QuestionAdminService
+#from app.interfaces.repositories import IQuestionRepository
+from app.dependencies import require_admin_role
 
 router = APIRouter()
 
@@ -39,37 +42,42 @@ class QuestionResponse(BaseModel):
     class Config:
         from_attributes = True
 
-def get_question_repository(db = Depends(get_database)) -> IQuestionRepository:
-    """Dependência para obter repositório de perguntas"""
-    return QuestionRepository(db)
 
-
-@router.post("", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def create_question(
-    question_data: QuestionCreate,
-    repository: IQuestionRepository = Depends(get_question_repository)
+    payload: QuestionCreateRequest,
+    service: QuestionAdminService = Depends(get_question_admin_service),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Cria uma nova pergunta (apenas admin)"""
-    question_dict = question_data.model_dump()
-    question = await repository.create(question_dict)
-    return QuestionResponse(**question)
+    return await service.create_full_question(payload)
 
 
-@router.get("", response_model=List[QuestionResponse])
+@router.get("", response_model=List[QuestionDB])
 async def get_questions(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
-    repository: IQuestionRepository = Depends(get_question_repository)
+    repository: QuestionRepository = Depends(get_question_repo)
 ):
     """Lista todas as perguntas (apenas admin)"""
     questions = await repository.get_all(skip=skip, limit=limit)
-    return [QuestionResponse(**question) for question in questions]
+    # Garantir que todas as questões tenham id válido e converter para QuestionDB
+    result = []
+    for q in questions:
+        try:
+            # O repositório já retorna com 'id' convertido de '_id'
+            # QuestionDB aceita tanto 'id' quanto '_id' com populate_by_name=True
+            question_db = QuestionDB(**q)
+            result.append(question_db)
+        except Exception as e:
+            print(f"Erro ao serializar questão: {e}, dados: {q}")
+            continue
+    return result
 
-
-@router.get("/{question_id}", response_model=QuestionResponse)
+@router.get("/{question_id}", response_model=QuestionDB)
 async def get_question(
     question_id: str,
-    repository: IQuestionRepository = Depends(get_question_repository)
+    repository: QuestionRepository = Depends(get_question_repo)
 ):
     """Busca uma pergunta por ID (apenas admin)"""
     question = await repository.get_by_id(question_id)
@@ -78,30 +86,32 @@ async def get_question(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Pergunta com ID {question_id} não encontrada"
         )
-    return QuestionResponse(**question)
+    return question
 
 
-@router.patch("/{question_id}", response_model=QuestionResponse)
-async def update_question(
-    question_id: str,
-    question_data: QuestionUpdate,
-    repository: IQuestionRepository = Depends(get_question_repository)
-):
-    """Atualiza uma pergunta (apenas admin)"""
-    update_dict = question_data.model_dump(exclude_none=True)
-    question = await repository.update(question_id, update_dict)
-    if not question:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Pergunta com ID {question_id} não encontrada"
-        )
-    return QuestionResponse(**question)
+# @router.patch("/{question_id}", response_model=QuestionResponse)
+# async def update_question(
+#     question_id: str,
+#     question_data: QuestionUpdate,
+#     repository: IQuestionRepository = Depends(get_question_repository),
+#     _admin_role: str = Depends(require_admin_role)
+# ):
+#     """Atualiza uma pergunta (apenas admin)"""
+#     update_dict = question_data.model_dump(exclude_none=True)
+#     question = await repository.update(question_id, update_dict)
+#     if not question:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail=f"Pergunta com ID {question_id} não encontrada"
+#         )
+#     return QuestionResponse(**question)
 
 
 @router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_question(
     question_id: str,
-    repository: IQuestionRepository = Depends(get_question_repository)
+    repository: QuestionRepository = Depends(get_question_repo),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Deleta uma pergunta (apenas admin)"""
     success = await repository.delete(question_id)

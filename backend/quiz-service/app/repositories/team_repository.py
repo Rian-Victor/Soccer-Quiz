@@ -4,18 +4,19 @@ Implementação concreta do repositório de times usando MongoDB
 from typing import Optional, List, Dict, Any
 from bson import ObjectId
 from bson.errors import InvalidId
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.interfaces.repositories import ITeamRepository
+#from app.interfaces.repositories import ITeamRepository
 from app.database import get_database
 
 
-class TeamRepository(ITeamRepository):
+class TeamRepository:
     """Implementação do repositório de times com MongoDB"""
     
-    def __init__(self):
-        self.db = get_database()
-        self.collection = self.db.teams
-    
+    def __init__(self, db: AsyncIOMotorDatabase):
+        #self.db = get_database()
+        self.collection = db["teams"]
+
     def _convert_id(self, team_data: Dict[str, Any]) -> Dict[str, Any]:
         """Converte ObjectId para string"""
         if team_data and "_id" in team_data:

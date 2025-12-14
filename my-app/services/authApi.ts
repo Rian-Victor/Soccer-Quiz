@@ -1,4 +1,5 @@
-const API_BASE_URL = "http://192.168.0.106:3002";
+import axios from "axios";
+import { appSettings } from "../Configs/settings";
 
 export interface LoginRequest {
   email: string;
@@ -35,47 +36,57 @@ export interface RefreshTokenResponse {
 
 // SRP: authService encapsula apenas chamadas relacionadas à autenticação.
 // OCP: novos endpoints de auth podem ser adicionados aqui sem alterar o contrato utilizado pelos consumidores.
+// Instância do axios sem token para rotas de autenticação (login/logout/refresh)
+const authAxios = axios.create({
+  baseURL: appSettings.URL.backend.api,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// SRP: authService encapsula apenas chamadas relacionadas à autenticação.
+// OCP: novos endpoints de auth podem ser adicionados aqui sem alterar o contrato utilizado pelos consumidores.
 export const authService = {
   async login(loginData: LoginRequest): Promise<LoginResponse> {
     console.log("Fazendo login...");
 
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(loginData),
-    });
-
-    console.log("Status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro:", errorText);
-      throw new Error(`Erro ao fazer login: ${response.status} - ${errorText}`);
+    try {
+      const response = await authAxios.post<LoginResponse>(
+        "/auth/login",
+        loginData
+      );
+      console.log("Status:", response.status);
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao fazer login";
+      console.error("Erro:", errorMessage);
+      throw new Error(
+        `Erro ao fazer login: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
+      );
     }
-
-    return await response.json();
   },
 
   async logout(logoutData: LogoutRequest): Promise<LogoutResponse> {
     console.log("Fazendo logout...");
 
-    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(logoutData),
-    });
-
-    console.log("Status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro:", errorText);
+    try {
+      const response = await authAxios.post<LogoutResponse>(
+        "/auth/logout",
+        logoutData
+      );
+      console.log("Status:", response.status);
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao fazer logout";
+      console.error("Erro:", errorMessage);
       throw new Error(
-        `Erro ao fazer logout: ${response.status} - ${errorText}`
+        `Erro ao fazer logout: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
       );
     }
 
@@ -87,24 +98,24 @@ export const authService = {
   ): Promise<RefreshTokenResponse> {
     console.log("Renovando token...");
 
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(refreshData),
-    });
-
-    console.log("Status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro:", errorText);
+    try {
+      const response = await authAxios.post<RefreshTokenResponse>(
+        "/auth/refresh",
+        refreshData
+      );
+      console.log("Status:", response.status);
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao renovar token";
+      console.error("Erro:", errorMessage);
       throw new Error(
-        `Erro ao renovar token: ${response.status} - ${errorText}`
+        `Erro ao renovar token: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
       );
     }
-
-    return await response.json();
   },
 };

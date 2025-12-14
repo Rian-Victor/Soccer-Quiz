@@ -40,8 +40,11 @@ app.add_middleware(
 )
 
 # Adicionar middlewares de autenticação e autorização
-app.add_middleware(JwtAuthMiddleware)
-app.add_middleware(CasbinAuthzMiddleware)
+# IMPORTANTE: Ordem de execução - JWT executa primeiro para extrair user_role,
+# depois Casbin verifica permissões baseado no role
+# No FastAPI/Starlette, middlewares executam na ordem de adição quando a requisição entra
+app.add_middleware(JwtAuthMiddleware)  # Executa primeiro - extrai user_role
+app.add_middleware(CasbinAuthzMiddleware)  # Executa depois - verifica permissões
 
 # Registrar rotas do gateway
 app.include_router(gateway.router, prefix="/api")

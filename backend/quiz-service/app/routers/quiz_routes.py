@@ -5,18 +5,21 @@ from app.database import get_database
 from app.repositories.quiz_session_repository import QuizSessionRepository
 from app.repositories.question_repository import QuestionRepository
 from app.repositories.answer_repository import AnswerRepository
+from app.repositories.quiz_repository import QuizRepository
 from app.services.quiz_game_service import QuizGameService
 from app.schemas.quiz_dtos import StartQuizRequest, SubmitAnswerRequest 
+from app.dependencies import get_quiz_game_service
 from app.messaging.producer import event_producer
 
-router = APIRouter(prefix="/api/quiz", tags=["quiz"])
+router = APIRouter(prefix="/quizzes", tags=["gameplay"])
 
 
 def get_quiz_service(db = Depends(get_database)) -> QuizGameService:
     session_repo = QuizSessionRepository(db)
     question_repo = QuestionRepository(db)
     answer_repo = AnswerRepository(db)
-    return QuizGameService(session_repo, question_repo, answer_repo, event_producer)
+    quiz_repo = QuizRepository(db)
+    return QuizGameService(session_repo, question_repo, answer_repo, event_producer, quiz_repo)
 
 async def get_current_user_id(x_user_id: Optional[str] = Header(None, alias="X-User-Id")) -> int:
     """
@@ -35,7 +38,7 @@ async def get_current_user_id(x_user_id: Optional[str] = Header(None, alias="X-U
 async def start_quiz(
     request: StartQuizRequest,
     user_id: int = Depends(get_current_user_id),
-    service: QuizGameService = Depends(get_quiz_service)
+    service: QuizGameService = Depends(get_quiz_game_service)
 ):
     """
     Inicia um novo quiz (REQ 06)
@@ -44,7 +47,8 @@ async def start_quiz(
         session = await service.start_quiz(
             user_id=user_id,
             quiz_type=request.quiz_type,
-            team_id=request.team_id
+            team_id=request.team_id,
+            quiz_id=request.quiz_id
         )
      
         current_quiz = await service.get_current_quiz(user_id)
@@ -60,7 +64,7 @@ async def start_quiz(
 @router.get("/current")
 async def get_current_quiz(
     user_id: int = Depends(get_current_user_id),
-    service: QuizGameService = Depends(get_quiz_service)
+    service: QuizGameService = Depends(get_quiz_game_service)
 ):
     """
     Retorna o quiz ativo do usuário ou 404
@@ -79,7 +83,7 @@ async def get_current_quiz(
 async def submit_answer(
     request: SubmitAnswerRequest,
     user_id: int = Depends(get_current_user_id),
-    service: QuizGameService = Depends(get_quiz_service)
+    service: QuizGameService = Depends(get_quiz_game_service)
 ):
     """
     Submete resposta de uma pergunta
@@ -100,7 +104,7 @@ async def submit_answer(
 async def abandon_quiz(
     session_id: str,
     user_id: int = Depends(get_current_user_id),
-    service: QuizGameService = Depends(get_quiz_service)
+    service: QuizGameService = Depends(get_quiz_game_service)
 ):
     """
     Usuário desiste do quiz (REQ 07)

@@ -6,12 +6,12 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.interfaces.repositories import IAnswerRepository
+#from app.interfaces.repositories import IAnswerRepository
 from app.database import get_database
 
 
 
-class AnswerRepository(IAnswerRepository):
+class AnswerRepository:
     """Implementação do repositório de respostas com MongoDB"""
     
     def __init__(self, db: AsyncIOMotorDatabase):
@@ -35,6 +35,14 @@ class AnswerRepository(IAnswerRepository):
             answers.append(self._convert_id(doc))
             
         return answers
+    
+    async def get_correct_answer_by_question(self, question_id: str) -> Optional[Dict[str, Any]]:
+        """Busca a resposta correta de uma pergunta específica"""
+        answer = await self.collection.find_one({
+            "questionId": question_id,
+            "correct": True
+        })
+        return self._convert_id(answer) if answer else None
     
     async def create(self, answer_data: Dict[str, Any]) -> Dict[str, Any]:
         """Cria uma nova resposta"""
@@ -86,5 +94,18 @@ class AnswerRepository(IAnswerRepository):
             return result.deleted_count > 0
         except InvalidId:
             return False
+        
+    async def create_many(self, answers_data: List[Dict[str, Any]]) -> List[str]:
+        """
+        Cria múltiplas respostas de uma vez (Bulk Insert).
+        Retorna uma lista com os IDs criados (como strings).
+        """
+        if not answers_data:
+            return []
+            
+        result = await self.collection.insert_many(answers_data)
+        
+        # Retorna os IDs gerados convertidos para string
+        return [str(uid) for uid in result.inserted_ids] 
         
 

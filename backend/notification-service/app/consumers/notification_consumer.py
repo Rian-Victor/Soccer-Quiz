@@ -52,7 +52,7 @@ class NotificationConsumer:
             )
             await queue_welcome.bind(exchange, routing_key="user.created")
             await queue_welcome.consume(self._on_welcome_message)
-            logger.info("✅ Fila [Boas-Vindas] vinculada a 'user.created'")
+            logger.info(f"✅ Fila [Boas-Vindas] vinculada a 'user.created'{self.exchange_name}")
 
             # --- SETUP DA FILA 2: PASSWORD RESET ---
             queue_reset = await self.channel.declare_queue(
@@ -62,8 +62,20 @@ class NotificationConsumer:
 
             await queue_reset.bind(exchange, routing_key="auth.password_reset")
             await queue_reset.consume(self._on_reset_message)
-            logger.info("✅ Fila [Reset Senha] vinculada a 'auth.password_reset'")
-            
+            logger.info(f"✅ Fila [Reset Senha] vinculada a 'auth.password_reset'{self.exchange_name}")
+   
+            # --- SETUP DA FILA 3: QUIZ CREATED ---
+
+            queue_quiz = await self.channel.declare_queue(
+                "notification_new_quiz_queue", 
+                durable=True
+            )
+
+            await queue_quiz.bind(exchange, routing_key="quiz.created ")
+            await queue_quiz.consume(self._on_quiz_created_message)
+
+            logger.info(f"✅ Fila [Novo Quiz] vinculada a 'quiz_events'{self.exchange_name}")
+
             logger.info("🚀 Consumidor rodando e aguardando eventos...")
             await asyncio.Future()
 
@@ -108,6 +120,31 @@ class NotificationConsumer:
 
             except Exception as e:
                 logger.error(f"❌ [Reset] Erro de processamento: {e}")
+
+
+    # --- PROCESSADOR 3: NOVO QUIZ CRIADO ---
+    async def _on_quiz_created_message(self, message: aio_pika.IncomingMessage):
+        """Notifica usuários sobre novo quiz"""
+        async with message.process():
+            try:
+                body = message.body.decode()
+                data = json.loads(body)
+                
+                title = data.get('title', 'Novo Desafio')
+                difficulty = data.get('difficulty', 'Geral')
+                
+                logger.info(f"📢 [Novo Quiz] Evento recebido: {title}")
+
+                logger.info("="*40)
+                logger.info(f"📧 DISPARANDO EMAIL EM MASSA PARA USUÁRIOS!")
+                logger.info(f"Assunto: O Quiz '{title}' já está disponível!")
+                logger.info(f"Nível: {difficulty}")
+                logger.info("="*40)
+
+                await EmailService.send_quiz_notification_batch(title, difficulty)
+
+            except Exception as e:
+                logger.error(f"❌ [Novo Quiz] Erro de processamento: {e}")
 
     # --- LÓGICA DE NEGÓCIO AUXILIAR ---
     async def _handle_password_reset_logic(self, data: Dict[str, Any]):

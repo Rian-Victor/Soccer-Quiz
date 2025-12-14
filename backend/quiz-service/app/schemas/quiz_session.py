@@ -33,6 +33,7 @@ class QuizSession(BaseModel):
     user_id: int
     quiz_type: QuizType 
     team_id: Optional[str] = None
+    quiz_id: Optional[str] = None  # ID do quiz pré-definido (se aplicável)
     
     status: QuizStatus = QuizStatus.IN_PROGRESS 
     
