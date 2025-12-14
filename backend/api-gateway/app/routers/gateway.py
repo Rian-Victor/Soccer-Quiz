@@ -72,10 +72,10 @@ async def proxy_user(path: str, request: Request):
 async def proxy_gameplay(path: str, request: Request):
     """
     Roteia o Gameplay (Start, Answer, Abandon)
-    Gateway: /api/quiz/start -> QuizService: /api/quiz/start
+    Gateway: /api/quiz/start -> QuizService: /quizzes/start
     """
-    # Reconstrói o caminho completo que o microsserviço espera
-    full_path = f"api/quiz/{path}"
+    # O quiz-service usa prefixo /quizzes, então mapeamos /api/quiz para /quizzes
+    full_path = f"quizzes/{path}"
     return await proxy_service.proxy_request("quiz", full_path, request)
 
 @router.api_route("/api/leaderboard/{path:path}", methods=["GET", "OPTIONS"])

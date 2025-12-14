@@ -342,3 +342,184 @@ export const quizService = {
     }
   },
 };
+
+// Interfaces para Gameplay
+export interface StartQuizRequest {
+  quiz_type?: "general" | "team";
+  team_id?: string;
+  quiz_id?: string;
+}
+
+export interface StartQuizResponse {
+  message: string;
+  session_id: string;
+  quiz: QuizSession;
+}
+
+export interface QuizSession {
+  id: string;
+  user_id: number;
+  quiz_type: string;
+  team_id?: string;
+  quiz_id?: string;
+  status: "in_progress" | "completed" | "abandoned";
+  questions: string[];
+  current_question_index: number;
+  answers: QuestionAnswer[];
+  total_points: number;
+  correct_answers: number;
+  wrong_answers: number;
+  started_at: string;
+  finished_at?: string;
+  total_time_seconds?: number;
+}
+
+export interface QuestionAnswer {
+  question_id: string;
+  selected_answer_id: string;
+  time_taken_seconds: number;
+  points_earned: number;
+}
+
+export interface SubmitAnswerRequest {
+  session_id: string;
+  question_id: string;
+  answer_id: string;
+  time_taken_seconds: number;
+}
+
+export interface SubmitAnswerResponse {
+  is_correct: boolean;
+  points_earned: number;
+  current_question_index: number;
+  total_points: number;
+  correct_answers: number;
+  wrong_answers: number;
+  is_finished: boolean;
+}
+
+export interface QuestionWithAnswers {
+  id: string;
+  statement: string;
+  topic: string;
+  difficulty: string;
+  answers: AnswerResponse[];
+}
+
+// Gameplay Service
+export const gameplayService = {
+  async startQuiz(
+    quizId?: string,
+    teamId?: string
+  ): Promise<StartQuizResponse> {
+    try {
+      const axiosInstance = getAxiosInstance();
+      const requestData: StartQuizRequest = {
+        quiz_type: "general",
+        quiz_id: quizId,
+        team_id: teamId,
+      };
+      const response = await axiosInstance.post<StartQuizResponse>(
+        "/api/quiz/start",
+        requestData
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao iniciar quiz";
+      throw new Error(`Erro ao iniciar quiz: ${errorMessage}`);
+    }
+  },
+
+  async getCurrentQuiz(): Promise<QuizSession> {
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.get<QuizSession>(
+        "/api/quiz/current"
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error("Nenhum quiz ativo encontrado");
+      }
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao buscar quiz";
+      throw new Error(`Erro ao buscar quiz: ${errorMessage}`);
+    }
+  },
+
+  async submitAnswer(
+    sessionId: string,
+    questionId: string,
+    answerId: string,
+    timeTakenSeconds: number
+  ): Promise<SubmitAnswerResponse> {
+    try {
+      const axiosInstance = getAxiosInstance();
+      const requestData: SubmitAnswerRequest = {
+        session_id: sessionId,
+        question_id: questionId,
+        answer_id: answerId,
+        time_taken_seconds: timeTakenSeconds,
+      };
+      const response = await axiosInstance.post<SubmitAnswerResponse>(
+        "/api/quiz/answer",
+        requestData
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao submeter resposta";
+      throw new Error(`Erro ao submeter resposta: ${errorMessage}`);
+    }
+  },
+
+  async abandonQuiz(sessionId: string): Promise<{
+    message: string;
+    total_points: number;
+    questions_answered: number;
+  }> {
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.post<{
+        message: string;
+        total_points: number;
+        questions_answered: number;
+      }>(`/api/quiz/abandon/${sessionId}`);
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao abandonar quiz";
+      throw new Error(`Erro ao abandonar quiz: ${errorMessage}`);
+    }
+  },
+
+  async getQuestionWithAnswers(
+    questionId: string
+  ): Promise<QuestionWithAnswers> {
+    try {
+      const [question, answers] = await Promise.all([
+        questionService.getQuestionById(questionId),
+        answerService.getAnswersByQuestion(questionId),
+      ]);
+
+      return {
+        id: question.id,
+        statement: question.statement,
+        topic: question.topic,
+        difficulty: question.difficulty,
+        answers: answers,
+      };
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao buscar pergunta";
+      throw new Error(`Erro ao buscar pergunta: ${errorMessage}`);
+    }
+  },
+};
