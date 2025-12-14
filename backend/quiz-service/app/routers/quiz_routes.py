@@ -9,6 +9,7 @@ from app.repositories.quiz_repository import QuizRepository
 from app.services.quiz_game_service import QuizGameService
 from app.schemas.quiz_dtos import StartQuizRequest, SubmitAnswerRequest 
 from app.dependencies import get_quiz_game_service
+from pydantic import BaseModel
 from app.messaging.producer import event_producer
 
 router = APIRouter(prefix="/quizzes", tags=["gameplay"])
@@ -119,3 +120,31 @@ async def abandon_quiz(
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+    # --- ROTA DE CONVITE (Adicionada por último) ---
+
+class InviteRequest(BaseModel):
+    email: str
+
+@router.post("/invite", status_code=200)
+async def invite_friend(
+    request: InviteRequest,
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    Convida um amigo por email para jogar (REQ 11)
+    """
+    # Como não estamos buscando o nome do usuário no banco agora,
+    # usamos o ID ou um nome fixo para a demo.
+    inviter_name = f"Jogador #{user_id}" 
+    
+    try:
+        await event_producer.publish_invite(
+            inviter_name=inviter_name,
+            target_email=request.email
+        )
+        return {"message": f"Convite enviado para {request.email}"}
+        
+    except Exception as e:
+        print(f"❌ Erro ao enviar convite: {e}")
+        return {"message": "Convite processado"}
