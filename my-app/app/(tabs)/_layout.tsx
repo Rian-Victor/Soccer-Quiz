@@ -2,22 +2,40 @@ import { Slot, useRouter, useSegments } from "expo-router";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { Ionicons } from "@expo/vector-icons";
+import { useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 export default function TabsLayout() {
   const router = useRouter();
   const segments = useSegments();
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const current = "/" + segments.join("/");
 
-  const tabs = [
-    { icon: ["home-outline", "home"], route: "home" },
-    { icon: ["stats-chart-outline", "stats-chart"], route: "stats" },
-    { icon: ["menu-outline", "menu"], route: "quizzes" },
-    { icon: ["newspaper-outline", "newspaper"], route: "dashboards" },
-    { icon: ["person-outline", "person"], route: "perfil" },
+  useEffect(() => {
+    loadUserRole();
+  }, []);
+
+  const loadUserRole = async () => {
+    try {
+      const role = await AsyncStorage.getItem("user_role");
+      setUserRole(role);
+    } catch (error) {
+      console.error("Erro ao carregar role do usuário:", error);
+    }
+  };
+
+  const allTabs = [
+    { icon: ["home-outline", "home"], route: "home", adminOnly: false },
+    { icon: ["stats-chart-outline", "stats-chart"], route: "stats", adminOnly: false },
+    { icon: ["menu-outline", "menu"], route: "quizzes", adminOnly: true },
+    { icon: ["newspaper-outline", "newspaper"], route: "dashboards", adminOnly: false },
+    { icon: ["person-outline", "person"], route: "perfil", adminOnly: false },
   ] as const;
 
+  // Filtrar abas baseado no role do usuário
+  const tabs = allTabs.filter(tab => !tab.adminOnly || userRole === "admin");
 
   return (
     <View style={{ flex: 1 }}>

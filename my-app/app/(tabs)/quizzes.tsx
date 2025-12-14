@@ -21,8 +21,16 @@ export default function MyQuizzes() {
 
   useEffect(() => {
     loadUserRole();
-    loadQuizzes();
   }, []);
+
+  useEffect(() => {
+    // Se não for admin, redirecionar para home
+    if (userRole !== null && userRole !== "admin") {
+      router.replace("/(tabs)/home");
+    } else if (userRole === "admin") {
+      loadQuizzes();
+    }
+  }, [userRole]);
 
   const loadUserRole = async () => {
     try {
@@ -52,7 +60,7 @@ export default function MyQuizzes() {
 
   const handlePlayQuiz = (quizId: string) => {
     router.push({
-      pathname: "/(tabs)/gameplay",
+      pathname: "/game",
       params: { quizId },
     });
   };
