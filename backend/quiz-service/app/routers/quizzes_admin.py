@@ -6,6 +6,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
 from typing import Optional
 from datetime import datetime, timezone
+from app.messaging.producer import event_producer
 
 from app.database import get_database
 from app.repositories.quiz_repository import QuizRepository
@@ -61,6 +62,23 @@ async def create_quiz(
     }
     
     quiz = await repository.create(quiz_dict)
+
+    try:
+        difficulty_level = getattr(quiz_data, "difficulty", "Geral")
+
+        await event_producer.publish_quiz_created({
+            "quiz_id": str(quiz.get("_id")), 
+            "title": quiz_data.title,
+            "difficulty": difficulty_level,
+            "created_at": str(datetime.now())
+        })
+    
+        print(f"🚀 [SUCESSO] Evento de notificação enviado para o RabbitMQ!")
+        
+    except Exception as e:
+        print(f"❌ [ERRO] Falha ao enviar notificação: {e}")
+
+
     return QuizDB(**quiz)
 
 

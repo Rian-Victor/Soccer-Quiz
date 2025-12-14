@@ -21,7 +21,7 @@ class EventProducer:
             
             # Declara a exchange (canal de transmissão)
             self.exchange = await self.channel.declare_exchange(
-                "quiz_events", 
+                settings.RABBITMQ_EXCHANGE,
                 aio_pika.ExchangeType.TOPIC,
                 durable=True
             )
@@ -32,6 +32,23 @@ class EventProducer:
     async def close(self):
         if self.connection:
             await self.connection.close()
+
+    async def publish_quiz_created(self, payload: dict):
+        """Publica evento de NOVO quiz criado (Admin)"""
+        if not self.exchange:
+            await self.connect()
+
+        try:
+            message = aio_pika.Message(
+            body=json.dumps(payload).encode(),
+            delivery_mode=aio_pika.DeliveryMode.PERSISTENT
+            )
+            
+            await self.exchange.publish(message, routing_key="quiz.created")
+            logger.info(f"📤 Evento quiz.created enviado: {payload.get('title')}")
+
+        except Exception as e:
+            logger.error(f"❌ Erro ao publicar quiz.created: {e}")
 
     async def publish_game_finished(self, payload: dict):
         """Publica evento de jogo finalizado"""

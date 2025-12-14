@@ -84,6 +84,24 @@ class QuizGameService:
         
         created_session = await self.session_repo.create(session)
         logger.info(f"✅ Quiz iniciado: user_id={user_id}, session_id={created_session.id}, quiz_id={quiz_id}")
+
+        try:
+            if self.event_producer:
+                await self.event_producer.publish_quiz_created(
+                    exchange_name="quiz_events",
+                    routing_key="game.started", 
+                    message={
+                        "event_type": "game_started",
+                        "session_id": str(created_session.id),
+                        "user_id": user_id,
+                        "quiz_id": quiz_id,
+                        "timestamp": str(datetime.utcnow())
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Erro ao publicar game.started: {e}")
+       
+
         
         return created_session
 
