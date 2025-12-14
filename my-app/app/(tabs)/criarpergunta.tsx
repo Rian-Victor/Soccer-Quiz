@@ -1,6 +1,7 @@
 import { StyleSheet, View, Image, Text, TouchableOpacity, ScrollView, TextInput, Modal, Alert } from "react-native";
 import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { questionService, QuestionCreate, QuestionResponse, answerService, AnswerCreate } from "../../services/quizApi";
 
 interface QuestionWithAnswer extends QuestionResponse {
@@ -15,13 +16,24 @@ export default function CreateQuestions() {
         answer: ""
     });
     const [loading, setLoading] = useState(false);
+    const [userRole, setUserRole] = useState<string | null>(null);
     const router = useRouter();
     const params = useLocalSearchParams();
     const selectedCategory = params.category as string || "Futebol";
 
     useEffect(() => {
+        loadUserRole();
         loadQuestions();
     }, []);
+
+    const loadUserRole = async () => {
+        try {
+            const role = await AsyncStorage.getItem("user_role");
+            setUserRole(role);
+        } catch (error) {
+            console.error("Erro ao carregar role do usuário:", error);
+        }
+    };
 
     const loadQuestions = async () => {
         try {
@@ -148,12 +160,14 @@ export default function CreateQuestions() {
                         />
                     </TouchableOpacity>
                     <Text style={styles.subtitle}>Criar perguntas</Text>
-                    <TouchableOpacity onPress={handleAddQuestion} disabled={loading}>
-                        <Image
-                            source={require('../../assets/images/plus-square.png')}
-                            style={[styles.editIcon, loading && { opacity: 0.5 }]}
-                        />
-                    </TouchableOpacity>
+                    {userRole === "admin" && (
+                        <TouchableOpacity onPress={handleAddQuestion} disabled={loading}>
+                            <Image
+                                source={require('../../assets/images/plus-square.png')}
+                                style={[styles.editIcon, loading && { opacity: 0.5 }]}
+                            />
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 <ScrollView style={styles.scrollcontent}>
@@ -199,7 +213,7 @@ export default function CreateQuestions() {
                         )}
                     </View>
 
-                    {questions.length > 0 && (
+                    {questions.length > 0 && userRole === "admin" && (
                         <TouchableOpacity
                             style={[styles.saveButton, loading && { opacity: 0.5 }]}
                             onPress={handleSaveAll}

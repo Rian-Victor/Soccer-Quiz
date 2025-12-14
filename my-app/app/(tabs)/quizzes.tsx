@@ -1,8 +1,24 @@
 import { StyleSheet, View, Image, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
+import { useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function MyQuizzes() {
     const router = useRouter();
+    const [userRole, setUserRole] = useState<string | null>(null);
+
+    useEffect(() => {
+        loadUserRole();
+    }, []);
+
+    const loadUserRole = async () => {
+        try {
+            const role = await AsyncStorage.getItem("user_role");
+            setUserRole(role);
+        } catch (error) {
+            console.error("Erro ao carregar role do usuário:", error);
+        }
+    };
 
     const quizzes = [
         { id: "1", title: "Tipos de carros de jogadores", date: "15/06/2025", category: "Futebol" },
@@ -31,12 +47,14 @@ export default function MyQuizzes() {
 
                 <View style={styles.headerBar}>
                     <Text style={styles.subtitle}>Seus quizzes</Text>
-                    <TouchableOpacity onPress={handleCreateQuiz}>
-                        <Image 
-                            source={require('../../assets/images/edit.png')} 
-                            style={styles.editIcon}
-                        />
-                    </TouchableOpacity>
+                    {userRole === "admin" && (
+                        <TouchableOpacity onPress={handleCreateQuiz}>
+                            <Image 
+                                source={require('../../assets/images/edit.png')} 
+                                style={styles.editIcon}
+                            />
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 <ScrollView style={styles.scrollcontent}>

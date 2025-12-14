@@ -1,6 +1,7 @@
 import { StyleSheet, View, Image, Text, TouchableOpacity, ScrollView, Modal, TextInput, Alert } from "react-native";
 import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { teamService, TeamCreate, TeamResponse } from "../../services/quizApi";
 
 interface TeamWithMembers extends TeamResponse {
@@ -17,6 +18,7 @@ export default function CreateQuiz() {
         members: ""
     });
     const [loading, setLoading] = useState(false);
+    const [userRole, setUserRole] = useState<string | null>(null);
     const params = useLocalSearchParams();
 
     const categories = [
@@ -27,8 +29,18 @@ export default function CreateQuiz() {
     ];
 
     useEffect(() => {
+        loadUserRole();
         loadTeams();
     }, []);
+
+    const loadUserRole = async () => {
+        try {
+            const role = await AsyncStorage.getItem("user_role");
+            setUserRole(role);
+        } catch (error) {
+            console.error("Erro ao carregar role do usuário:", error);
+        }
+    };
 
     const loadTeams = async () => {
         try {
@@ -133,12 +145,14 @@ export default function CreateQuiz() {
                         />
                     </TouchableOpacity>
                     <Text style={styles.subtitle}>Criar quiz</Text>
-                    <TouchableOpacity onPress={handleCriarPergunta}>
-                        <Image
-                            source={require('../../assets/images/plus-square.png')}
-                            style={styles.editIcon}
-                        />
-                    </TouchableOpacity>
+                    {userRole === "admin" && (
+                        <TouchableOpacity onPress={handleCriarPergunta}>
+                            <Image
+                                source={require('../../assets/images/plus-square.png')}
+                                style={styles.editIcon}
+                            />
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 <ScrollView style={styles.scrollcontent}>
@@ -194,14 +208,16 @@ export default function CreateQuiz() {
                         )}
                     </View>
 
-                    <TouchableOpacity 
-                        style={styles.avancarButton}
-                        onPress={handleAvançar}
-                    >
-                        <Text style={styles.avancarText}>
-                            {teams.length === 0 ? "Avançar" : "Avançar"}
-                        </Text>
-                    </TouchableOpacity>
+                    {userRole === "admin" && (
+                        <TouchableOpacity 
+                            style={styles.avancarButton}
+                            onPress={handleAvançar}
+                        >
+                            <Text style={styles.avancarText}>
+                                {teams.length === 0 ? "Avançar" : "Avançar"}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
 
                 </ScrollView>
 
