@@ -13,6 +13,7 @@ from app.repositories.question_repository import QuestionRepository
 from app.repositories.answer_repository import AnswerRepository
 from app.repositories.quiz_session_repository import QuizSessionRepository
 from app.repositories.team_repository import TeamRepository
+from app.repositories.quiz_repository import QuizRepository
 
 # Serviços
 from app.services.quiz_game_service import QuizGameService
@@ -70,6 +71,9 @@ def get_session_repo(db=Depends(get_db_conn)) -> QuizSessionRepository:
 def get_team_repo(db=Depends(get_db_conn)) -> TeamRepository:
     return TeamRepository(db)
 
+def get_quiz_repo(db=Depends(get_db_conn)) -> QuizRepository:
+    return QuizRepository(db)
+
 # 4. Serviços (AQUI LIMPA AS ROTAS)
 def get_question_admin_service(
     q_repo=Depends(get_question_repo),
@@ -81,6 +85,7 @@ def get_quiz_game_service(
     s_repo=Depends(get_session_repo),
     q_repo=Depends(get_question_repo),
     a_repo=Depends(get_answer_repo),
-    producer=Depends(get_event_producer_instance)
+    producer=Depends(get_event_producer_instance),
+    quiz_repo=Depends(get_quiz_repo)
 ) -> QuizGameService:
-    return QuizGameService(s_repo, q_repo, a_repo, producer)
+    return QuizGameService(s_repo, q_repo, a_repo, producer, quiz_repo)

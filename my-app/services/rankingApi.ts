@@ -1,4 +1,4 @@
-const RANKING_API_BASE_URL = "http://192.168.1.211:3005";
+const RANKING_API_BASE_URL = "http://192.168.0.106:3005";
 
 export interface RankingItem {
     user_id: number;

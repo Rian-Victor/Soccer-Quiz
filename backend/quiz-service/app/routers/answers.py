@@ -49,6 +49,16 @@ async def create_answer(
     _admin_role: str = Depends(require_admin_role)
 ):
     """Cria uma nova resposta (apenas admin)"""
+    # Se a resposta está marcada como correta, verificar se já existe outra correta
+    if answer_data.correct:
+        existing_correct = await repository.get_correct_answer_by_question(answer_data.questionId)
+        if existing_correct:
+            # Atualizar a resposta anterior para incorreta
+            await repository.update(
+                existing_correct["id"],
+                {"correct": False}
+            )
+    
     answer_dict = answer_data.model_dump()
     answer = await repository.create(answer_dict)
     return AnswerResponse(**answer)

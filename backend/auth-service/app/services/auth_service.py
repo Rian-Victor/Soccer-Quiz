@@ -24,7 +24,6 @@ class AuthService:
     """Serviço para gerenciar autenticação"""
     
     # DIP: recebe JwtService via construtor para depender apenas da abstração de geração de tokens.
-    def __init__(self, jwt_service: JwtService):
     def __init__(self, jwt_service: JwtService, user_service_client: UserServiceClient, db: Session = None):
         self.jwt_service = jwt_service
         self.user_service_client = user_service_client

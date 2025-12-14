@@ -4,6 +4,8 @@ export interface QuestionCreate {
   statement: string;
   topic: string;
   difficulty: string;
+  options: string[];
+  correct_option_index: number;
 }
 
 export interface QuestionResponse {
@@ -37,6 +39,21 @@ export interface AnswerResponse {
   questionId: string;
   text: string;
   correct: boolean;
+}
+
+export interface QuizCreate {
+  title: string;
+  description?: string;
+  question_ids: string[];
+}
+
+export interface QuizResponse {
+  id: string;
+  title: string;
+  description?: string;
+  question_ids: string[];
+  created_at: string;
+  created_by: number;
 }
 
 // SRP: answerService lida apenas com os endpoints de respostas.
@@ -233,6 +250,95 @@ export const teamService = {
       const errorMessage =
         error.response?.data?.detail || error.message || "Erro ao buscar time";
       throw new Error(`Erro ao buscar time: ${errorMessage}`);
+    }
+  },
+};
+
+// SRP: quizService concentra as chamadas relacionadas a quizzes pré-definidos.
+export const quizService = {
+  async createQuiz(quizData: QuizCreate): Promise<QuizResponse> {
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.post<QuizResponse>(
+        "/quizzes-admin",
+        quizData
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao criar quiz";
+      throw new Error(
+        `Erro ao criar quiz: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
+      );
+    }
+  },
+
+  async getQuizzes(
+    skip: number = 0,
+    limit: number = 100
+  ): Promise<QuizResponse[]> {
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.get<QuizResponse[]>(
+        "/quizzes-admin",
+        {
+          params: { skip, limit },
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao buscar quizzes";
+      throw new Error(`Erro ao buscar quizzes: ${errorMessage}`);
+    }
+  },
+
+  async getQuizById(quizId: string): Promise<QuizResponse> {
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.get<QuizResponse>(
+        `/quizzes-admin/${quizId}`
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao buscar quiz";
+      throw new Error(`Erro ao buscar quiz: ${errorMessage}`);
+    }
+  },
+
+  async updateQuiz(
+    quizId: string,
+    quizData: Partial<QuizCreate>
+  ): Promise<QuizResponse> {
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.patch<QuizResponse>(
+        `/quizzes-admin/${quizId}`,
+        quizData
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao atualizar quiz";
+      throw new Error(`Erro ao atualizar quiz: ${errorMessage}`);
+    }
+  },
+
+  async deleteQuiz(quizId: string): Promise<void> {
+    try {
+      const axiosInstance = getAxiosInstance();
+      await axiosInstance.delete(`/quizzes-admin/${quizId}`);
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao deletar quiz";
+      throw new Error(`Erro ao deletar quiz: ${errorMessage}`);
     }
   },
 };

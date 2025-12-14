@@ -5,6 +5,7 @@ import logging
 from app.repositories.quiz_session_repository import QuizSessionRepository
 from app.repositories.question_repository import QuestionRepository
 from app.repositories.answer_repository import AnswerRepository
+from app.repositories.quiz_repository import QuizRepository
 
 from app.schemas.quiz_session import QuizSession, QuizStatus, QuizType, QuestionAnswer
 from app.utils.scoring import calculate_points
@@ -19,47 +20,70 @@ class QuizGameService:
         session_repo: QuizSessionRepository,
         question_repo: QuestionRepository,
         answer_repo: AnswerRepository,
-        event_producer: EventProducer # Injeção de dependência futura
+        event_producer: EventProducer, # Injeção de dependência futura
+        quiz_repo: Optional[QuizRepository] = None
     ):
         self.session_repo = session_repo
         self.question_repo = question_repo
         self.answer_repo = answer_repo
         self.event_producer = event_producer
+        self.quiz_repo = quiz_repo
     
     async def start_quiz(
         self, 
         user_id: int, 
         quiz_type: str = "general", 
-        team_id: Optional[str] = None
+        team_id: Optional[str] = None,
+        quiz_id: Optional[str] = None
     ) -> QuizSession:
         active_session = await self.session_repo.get_active_by_user(user_id)
         if active_session:
             raise ValueError("Usuário já possui um quiz ativo")
         
-        logger.info(f"🔍 DEBUG: Tentando buscar perguntas...")
-      
-        questions = await self.question_repo.get_random_questions(limit=10, team_id=team_id) #ajustar dps
+        question_ids: List[str] = []
         
-        logger.info(f"🔍 DEBUG: Quantidade encontrada: {len(questions)}")
-        logger.info(f"🔍 DEBUG: Conteúdo: {questions}")
+        # Se quiz_id foi fornecido, usar questões do quiz pré-definido
+        if quiz_id:
+            if not self.quiz_repo:
+                raise ValueError("QuizRepository não está disponível")
+            
+            quiz = await self.quiz_repo.get_by_id(quiz_id)
+            if not quiz:
+                raise ValueError(f"Quiz com ID {quiz_id} não encontrado")
+            
+            question_ids = quiz.get("question_ids", [])
+            
+            if len(question_ids) < 5:
+                raise ValueError("Quiz não possui questões suficientes (mínimo 5)")
+            
+            logger.info(f"🔍 Usando quiz pré-definido: {quiz_id} com {len(question_ids)} questões")
+        else:
+            # Lógica original: buscar questões aleatórias
+            logger.info(f"🔍 DEBUG: Tentando buscar perguntas aleatórias...")
+          
+            questions = await self.question_repo.get_random_questions(limit=10, team_id=team_id) #ajustar dps
+            
+            logger.info(f"🔍 DEBUG: Quantidade encontrada: {len(questions)}")
+            logger.info(f"🔍 DEBUG: Conteúdo: {questions}")
 
-        if len(questions) < 5:  #ajustar dps
-            logger.error("DEBUG: Entrou no IF de erro!")
-            raise ValueError("Não há perguntas suficientes para iniciar o quiz")
-        
-        question_ids = [str(q.get("id", q.get("_id"))) for q in questions]
+            if len(questions) < 5:  #ajustar dps
+                logger.error("DEBUG: Entrou no IF de erro!")
+                raise ValueError("Não há perguntas suficientes para iniciar o quiz")
+            
+            question_ids = [str(q.get("id", q.get("_id"))) for q in questions]
         
         session = QuizSession(
             user_id=user_id,
             quiz_type=QuizType(quiz_type), 
             team_id=team_id,
+            quiz_id=quiz_id,
             status=QuizStatus.IN_PROGRESS, 
             questions=question_ids,
             started_at=datetime.utcnow()
         )
         
         created_session = await self.session_repo.create(session)
-        logger.info(f"✅ Quiz iniciado: user_id={user_id}, session_id={created_session.id}")
+        logger.info(f"✅ Quiz iniciado: user_id={user_id}, session_id={created_session.id}, quiz_id={quiz_id}")
         
         return created_session
 

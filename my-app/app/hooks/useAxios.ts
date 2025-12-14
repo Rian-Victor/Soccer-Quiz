@@ -19,8 +19,19 @@ const createAxiosInstance = (): AxiosInstance => {
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // Adicionar headers de role e user_id
+        const userRole = await AsyncStorage.getItem("user_role");
+        const userId = await AsyncStorage.getItem("user_id");
+
+        if (userRole) {
+          config.headers["X-User-Role"] = userRole;
+        }
+        if (userId) {
+          config.headers["X-User-Id"] = userId;
+        }
       } catch (error) {
-        console.error("Erro ao ler token do AsyncStorage:", error);
+        console.error("Erro ao ler dados do AsyncStorage:", error);
       }
       return config;
     },
@@ -38,7 +49,7 @@ const createAxiosInstance = (): AxiosInstance => {
         // Opcional: tentar refresh token ou redirecionar para login
         console.warn("Token inválido ou expirado");
       }
-      return Promise.reject(error);
+      throw error;
     }
   );
 

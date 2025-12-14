@@ -135,3 +135,16 @@ async def proxy_answers_root(request: Request):
     """Roteia requisições para quiz-service - Answers (root)"""
     return await proxy_service.proxy_request("quiz", "answers", request)
 
+
+@router.api_route("/quizzes-admin/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+async def proxy_quizzes_admin(path: str, request: Request):
+    """Roteia requisições para quiz-service - Quizzes Admin (CRUD de quizzes pré-definidos)"""
+    full_path = f"quizzes-admin/{path}" if path else "quizzes-admin"
+    return await proxy_service.proxy_request("quiz", full_path, request)
+
+
+@router.api_route("/quizzes-admin", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+async def proxy_quizzes_admin_root(request: Request):
+    """Roteia requisições para quiz-service - Quizzes Admin (root)"""
+    return await proxy_service.proxy_request("quiz", "quizzes-admin", request)
+

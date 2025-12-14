@@ -60,7 +60,19 @@ async def get_questions(
     repository: QuestionRepository = Depends(get_question_repo)
 ):
     """Lista todas as perguntas (apenas admin)"""
-    return await repository.get_all(skip=skip, limit=limit)
+    questions = await repository.get_all(skip=skip, limit=limit)
+    # Garantir que todas as questões tenham id válido e converter para QuestionDB
+    result = []
+    for q in questions:
+        try:
+            # O repositório já retorna com 'id' convertido de '_id'
+            # QuestionDB aceita tanto 'id' quanto '_id' com populate_by_name=True
+            question_db = QuestionDB(**q)
+            result.append(question_db)
+        except Exception as e:
+            print(f"Erro ao serializar questão: {e}, dados: {q}")
+            continue
+    return result
 
 @router.get("/{question_id}", response_model=QuestionDB)
 async def get_question(
