@@ -90,11 +90,20 @@ class ProxyService:
             "accept-language",
             "user-agent",
             "x-user-id",
+            "x-user-role",
         ]
         
         for key in request.headers:
             if key.lower() in header_keys_to_forward:
                 headers[key] = request.headers[key]
+        
+        # Adicionar headers de user_role e user_id do estado da requisição
+        # (extraídos pelo JWT middleware)
+        if hasattr(request.state, "user_role"):
+            headers["X-User-Role"] = request.state.user_role
+        
+        if hasattr(request.state, "user_id"):
+            headers["X-User-Id"] = str(request.state.user_id)
         
         # Ler body da requisição
         body = await request.body()

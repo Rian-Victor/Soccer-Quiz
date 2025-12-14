@@ -29,14 +29,25 @@ class CasbinAuthzMiddleware(BaseHTTPMiddleware):
             model_path = os.path.join(base_dir, settings.CASBIN_MODEL_PATH)
             policy_path = os.path.join(base_dir, settings.CASBIN_POLICY_PATH)
             
-            self.enforcer = casbin.Enforcer(
-                model_path,
-                policy_path
-            )
+            print(f"[Casbin] Inicializando enforcer: model={model_path}, policy={policy_path}")
+            
+            try:
+                self.enforcer = casbin.Enforcer(
+                    model_path,
+                    policy_path
+                )
+                print(f"[Casbin] Enforcer inicializado com sucesso. Políticas carregadas: {len(self.enforcer.get_policy())}")
+            except Exception as e:
+                print(f"[Casbin] ERRO ao inicializar enforcer: {e}")
+                raise
         
         # Rotas de autenticação são permitidas para todos
         path = request.url.path
         if path.startswith("/api/auth/"):
+            return await call_next(request)
+        
+        # Rotas de password reset são públicas (não precisam de autenticação)
+        if path.startswith("/api/password/"):
             return await call_next(request)
         
         # Rotas públicas não precisam de autorização
@@ -56,6 +67,9 @@ class CasbinAuthzMiddleware(BaseHTTPMiddleware):
         normalized_path = path.split("?")[0]
         method = request.method
         
+        # Log para debug
+        print(f"[Casbin] Verificando autorização: role={user_role}, path={normalized_path}, method={method}")
+        
         # Tentar verificar com path exato primeiro
         allowed = self.enforcer.enforce(user_role, normalized_path, method)
         
@@ -66,9 +80,11 @@ class CasbinAuthzMiddleware(BaseHTTPMiddleware):
             if len(path_parts) > 3:
                 # Construir path com wildcard (ex: /api/users/*)
                 wildcard_path = "/".join(path_parts[:-1]) + "/*"
+                print(f"[Casbin] Tentando com wildcard: {wildcard_path}")
                 allowed = self.enforcer.enforce(user_role, wildcard_path, method)
         
         if not allowed:
+            print(f"[Casbin] Acesso NEGADO: role={user_role}, path={normalized_path}, method={method}")
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={
@@ -76,5 +92,6 @@ class CasbinAuthzMiddleware(BaseHTTPMiddleware):
                 }
             )
         
+        print(f"[Casbin] Acesso PERMITIDO: role={user_role}, path={normalized_path}, method={method}")
         return await call_next(request)
 

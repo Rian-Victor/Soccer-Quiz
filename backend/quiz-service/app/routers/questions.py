@@ -9,6 +9,7 @@ from app.database import get_database
 
 from app.repositories.question_repository import QuestionRepository
 from app.interfaces.repositories import IQuestionRepository
+from app.dependencies import require_admin_role
 
 
 router = APIRouter()
@@ -47,7 +48,8 @@ def get_question_repository(db = Depends(get_database)) -> IQuestionRepository:
 @router.post("", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
 async def create_question(
     question_data: QuestionCreate,
-    repository: IQuestionRepository = Depends(get_question_repository)
+    repository: IQuestionRepository = Depends(get_question_repository),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Cria uma nova pergunta (apenas admin)"""
     question_dict = question_data.model_dump()
@@ -85,7 +87,8 @@ async def get_question(
 async def update_question(
     question_id: str,
     question_data: QuestionUpdate,
-    repository: IQuestionRepository = Depends(get_question_repository)
+    repository: IQuestionRepository = Depends(get_question_repository),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Atualiza uma pergunta (apenas admin)"""
     update_dict = question_data.model_dump(exclude_none=True)
@@ -101,7 +104,8 @@ async def update_question(
 @router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_question(
     question_id: str,
-    repository: IQuestionRepository = Depends(get_question_repository)
+    repository: IQuestionRepository = Depends(get_question_repository),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Deleta uma pergunta (apenas admin)"""
     success = await repository.delete(question_id)

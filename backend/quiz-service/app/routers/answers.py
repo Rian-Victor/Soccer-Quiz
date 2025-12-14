@@ -9,6 +9,7 @@ from app.database import get_database
 
 from app.repositories.answer_repository import AnswerRepository
 from app.interfaces.repositories import IAnswerRepository
+from app.dependencies import require_admin_role
 
 
 router = APIRouter()
@@ -48,7 +49,8 @@ def get_answer_repository(db = Depends(get_database)) -> IAnswerRepository:
 @router.post("", response_model=AnswerResponse, status_code=status.HTTP_201_CREATED)
 async def create_answer(
     answer_data: AnswerCreate,
-    repository: IAnswerRepository = Depends(get_answer_repository)
+    repository: IAnswerRepository = Depends(get_answer_repository),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Cria uma nova resposta (apenas admin)"""
     answer_dict = answer_data.model_dump()
@@ -87,7 +89,8 @@ async def get_answer(
 async def update_answer(
     answer_id: str,
     answer_data: AnswerUpdate,
-    repository: IAnswerRepository = Depends(get_answer_repository)
+    repository: IAnswerRepository = Depends(get_answer_repository),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Atualiza uma resposta (apenas admin)"""
     update_dict = answer_data.model_dump(exclude_none=True)
@@ -103,7 +106,8 @@ async def update_answer(
 @router.delete("/{answer_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_answer(
     answer_id: str,
-    repository: IAnswerRepository = Depends(get_answer_repository)
+    repository: IAnswerRepository = Depends(get_answer_repository),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Deleta uma resposta (apenas admin)"""
     success = await repository.delete(answer_id)
