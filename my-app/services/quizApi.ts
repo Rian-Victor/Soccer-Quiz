@@ -1,5 +1,7 @@
 import { getAxiosInstance } from "../app/hooks/useAxios";
 
+// ==================== INTERFACES ====================
+
 export interface QuestionCreate {
   statement: string;
   topic: string;
@@ -13,19 +15,8 @@ export interface QuestionResponse {
   statement: string;
   topic: string;
   difficulty: string;
-}
-
-export interface TeamCreate {
-  name: string;
-  country: string;
-  members: number[];
-}
-
-export interface TeamResponse {
-  id: string;
-  name: string;
-  country: string;
-  members: number[];
+  options?: string[];
+  correct_option_index?: number;
 }
 
 export interface AnswerCreate {
@@ -39,6 +30,19 @@ export interface AnswerResponse {
   questionId: string;
   text: string;
   correct: boolean;
+}
+
+export interface TeamCreate {
+  name: string;
+  country: string;
+  members: number[];
+}
+
+export interface TeamResponse {
+  id: string;
+  name: string;
+  country: string;
+  members: number[];
 }
 
 export interface QuizCreate {
@@ -56,26 +60,86 @@ export interface QuizResponse {
   created_by: number;
 }
 
+// Interfaces para Gameplay
+export interface StartQuizRequest {
+  quiz_type?: "general" | "team";
+  team_id?: string;
+  quiz_id?: string;
+}
+
+export interface StartQuizResponse {
+  message: string;
+  session_id: string;
+  quiz: QuizSession;
+}
+
+export interface QuizSession {
+  id: string;
+  user_id: number;
+  quiz_type: string;
+  team_id?: string;
+  quiz_id?: string;
+  status: "in_progress" | "completed" | "abandoned";
+  questions: string[];
+  current_question_index: number;
+  answers: QuestionAnswer[];
+  total_points: number;
+  correct_answers: number;
+  wrong_answers: number;
+  started_at: string;
+  finished_at?: string;
+  total_time_seconds?: number;
+}
+
+export interface QuestionAnswer {
+  question_id: string;
+  selected_answer_id: string;
+  time_taken_seconds: number;
+  points_earned: number;
+}
+
+export interface SubmitAnswerRequest {
+  session_id: string;
+  question_id: string;
+  answer_id: string;
+  time_taken_seconds: number;
+}
+
+export interface SubmitAnswerResponse {
+  is_correct: boolean;
+  points_earned: number;
+  current_question_index: number;
+  total_points: number;
+  correct_answers: number;
+  wrong_answers: number;
+  is_finished: boolean;
+}
+
+export interface QuestionWithAnswers {
+  id: string;
+  statement: string;
+  topic: string;
+  difficulty: string;
+  answers: AnswerResponse[];
+}
+
+// ==================== SERVICES ====================
+
 // SRP: answerService lida apenas com os endpoints de respostas.
-// OCP: novos comportamentos podem ser estendidos neste objeto sem alterar os consumidores existentes.
 export const answerService = {
   async createAnswer(answerData: AnswerCreate): Promise<AnswerResponse> {
-    console.log("Criando resposta...");
-
     try {
       const axiosInstance = getAxiosInstance();
       const response = await axiosInstance.post<AnswerResponse>(
         "/answers",
         answerData
       );
-      console.log("Status:", response.status);
       return response.data;
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.detail ||
         error.message ||
         "Erro ao criar resposta";
-      console.error("Erro:", errorMessage);
       throw new Error(
         `Erro ao criar resposta: ${
           error.response?.status || "unknown"
@@ -102,7 +166,6 @@ export const answerService = {
 };
 
 // SRP: questionService agrupa apenas a lógica de perguntas.
-// OCP: a interface permanece estável para os componentes, mesmo quando novos métodos são adicionados.
 export const questionService = {
   async createQuestion(
     questionData: QuestionCreate
@@ -119,7 +182,6 @@ export const questionService = {
         error.response?.data?.detail ||
         error.message ||
         "Erro ao criar pergunta";
-      console.error("Erro detalhado da API:", errorMessage);
       throw new Error(
         `Erro ao criar pergunta: ${
           error.response?.status || "unknown"
@@ -201,7 +263,6 @@ export const questionService = {
 };
 
 // SRP: teamService concentra as chamadas relacionadas a times.
-// OCP: permite incluir ações adicionais sem impactar quem consome o objeto hoje.
 export const teamService = {
   async createTeam(teamData: TeamCreate): Promise<TeamResponse> {
     try {
@@ -343,70 +404,7 @@ export const quizService = {
   },
 };
 
-// Interfaces para Gameplay
-export interface StartQuizRequest {
-  quiz_type?: "general" | "team";
-  team_id?: string;
-  quiz_id?: string;
-}
-
-export interface StartQuizResponse {
-  message: string;
-  session_id: string;
-  quiz: QuizSession;
-}
-
-export interface QuizSession {
-  id: string;
-  user_id: number;
-  quiz_type: string;
-  team_id?: string;
-  quiz_id?: string;
-  status: "in_progress" | "completed" | "abandoned";
-  questions: string[];
-  current_question_index: number;
-  answers: QuestionAnswer[];
-  total_points: number;
-  correct_answers: number;
-  wrong_answers: number;
-  started_at: string;
-  finished_at?: string;
-  total_time_seconds?: number;
-}
-
-export interface QuestionAnswer {
-  question_id: string;
-  selected_answer_id: string;
-  time_taken_seconds: number;
-  points_earned: number;
-}
-
-export interface SubmitAnswerRequest {
-  session_id: string;
-  question_id: string;
-  answer_id: string;
-  time_taken_seconds: number;
-}
-
-export interface SubmitAnswerResponse {
-  is_correct: boolean;
-  points_earned: number;
-  current_question_index: number;
-  total_points: number;
-  correct_answers: number;
-  wrong_answers: number;
-  is_finished: boolean;
-}
-
-export interface QuestionWithAnswers {
-  id: string;
-  statement: string;
-  topic: string;
-  difficulty: string;
-  answers: AnswerResponse[];
-}
-
-// Gameplay Service
+// SRP: gameplayService concentra as chamadas relacionadas ao gameplay de quizzes.
 export const gameplayService = {
   async startQuiz(
     quizId?: string,
@@ -523,5 +521,43 @@ export const gameplayService = {
         "Erro ao buscar pergunta";
       throw new Error(`Erro ao buscar pergunta: ${errorMessage}`);
     }
+  },
+};
+
+// Compatibilidade: quizGameService (deprecated - usar gameplayService)
+// Mantido para compatibilidade com código antigo
+export const quizGameService = {
+  async getHeaders() {
+    // Headers são gerenciados automaticamente pelo axios interceptor
+    return {};
+  },
+
+  async startQuiz(quizType: "general" | "team" = "general", teamId?: string) {
+    return await gameplayService.startQuiz(undefined, teamId);
+  },
+
+  async getCurrentQuiz() {
+    try {
+      return await gameplayService.getCurrentQuiz();
+    } catch (error: any) {
+      if (error.is404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  async submitAnswer(
+    sessionId: string,
+    questionId: string,
+    answerId: string,
+    timeTaken: number
+  ) {
+    return await gameplayService.submitAnswer(
+      sessionId,
+      questionId,
+      answerId,
+      timeTaken
+    );
   },
 };
