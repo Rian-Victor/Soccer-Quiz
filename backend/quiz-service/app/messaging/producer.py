@@ -13,6 +13,8 @@ class EventProducer:
 
     async def connect(self):
         """Conecta ao RabbitMQ (chamar no startup do FastAPI)"""
+        if self.connection and not self.connection.is_closed:
+            return  # Já conectado
         try:
             self.connection = await aio_pika.connect_robust(settings.RABBITMQ_URL)
             self.channel = await self.connection.channel()

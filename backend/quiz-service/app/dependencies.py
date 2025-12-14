@@ -1,0 +1,60 @@
+# app/dependencies.py
+from fastapi import Depends
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
+# Importa as globais que você já tem
+from app.database import get_database # <--- ASSUMINDO que você tem uma função que retorna o banco conectado
+from app.messaging.producer import event_producer 
+
+# Repositórios
+from app.repositories.question_repository import QuestionRepository
+from app.repositories.answer_repository import AnswerRepository
+from app.repositories.quiz_session_repository import QuizSessionRepository
+from app.repositories.team_repository import TeamRepository
+
+# Serviços
+from app.services.quiz_game_service import QuizGameService
+from app.services.question_admin_service import QuestionAdminService
+from app.messaging.producer import EventProducer
+
+# ------------------------------------------------------------------
+# FÁBRICAS (Dependency Injection)
+# ------------------------------------------------------------------
+
+# 1. Banco de Dados
+# O FastAPI vai resolver isso usando a função do seu app.database
+async def get_db_conn() -> AsyncIOMotorDatabase:
+    return get_database() 
+
+# 2. RabbitMQ Producer
+# Retorna a instância global que foi conectada no lifespan do main.py
+def get_event_producer_instance() -> EventProducer:
+    return event_producer
+
+# 3. Repositorios
+def get_question_repo(db=Depends(get_db_conn)) -> QuestionRepository:
+    return QuestionRepository(db)
+
+def get_answer_repo(db=Depends(get_db_conn)) -> AnswerRepository:
+    return AnswerRepository(db)
+
+def get_session_repo(db=Depends(get_db_conn)) -> QuizSessionRepository:
+    return QuizSessionRepository(db)
+
+def get_team_repo(db=Depends(get_db_conn)) -> TeamRepository:
+    return TeamRepository(db)
+
+# 4. Serviços (AQUI LIMPA AS ROTAS)
+def get_question_admin_service(
+    q_repo=Depends(get_question_repo),
+    a_repo=Depends(get_answer_repo)
+) -> QuestionAdminService:
+    return QuestionAdminService(q_repo, a_repo)
+
+def get_quiz_game_service(
+    s_repo=Depends(get_session_repo),
+    q_repo=Depends(get_question_repo),
+    a_repo=Depends(get_answer_repo),
+    producer=Depends(get_event_producer_instance)
+) -> QuizGameService:
+    return QuizGameService(s_repo, q_repo, a_repo, producer)
