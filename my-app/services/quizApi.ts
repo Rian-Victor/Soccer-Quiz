@@ -440,7 +440,9 @@ export const gameplayService = {
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
-        throw new Error("Nenhum quiz ativo encontrado");
+        const notFoundError = new Error("404") as any;
+        notFoundError.is404 = true;
+        throw notFoundError;
       }
       const errorMessage =
         error.response?.data?.detail || error.message || "Erro ao buscar quiz";

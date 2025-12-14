@@ -36,6 +36,17 @@ export default function Gameplay() {
     wrongAnswers: number;
     totalTime: number;
   } | null>(null);
+  
+  // Armazenar respostas localmente antes de submeter
+  const [localAnswers, setLocalAnswers] = useState<Map<string, {
+    questionId: string;
+    answerId: string;
+    timeTaken: number;
+    timestamp: number;
+  }>>(new Map());
+  
+  // Índice local para navegação (pode ser diferente do backend se houver respostas já submetidas)
+  const [localQuestionIndex, setLocalQuestionIndex] = useState<number>(0);
 
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -50,9 +61,17 @@ export default function Gameplay() {
 
   useEffect(() => {
     if (currentQuiz && !quizFinished) {
-      loadCurrentQuestion();
+      // Usar índice local para navegação
+      loadCurrentQuestionByIndex(localQuestionIndex);
     }
-  }, [currentQuiz?.current_question_index, quizFinished]);
+  }, [localQuestionIndex, quizFinished, currentQuiz]);
+  
+  useEffect(() => {
+    // Quando quiz é carregado, inicializar índice local
+    if (currentQuiz) {
+      setLocalQuestionIndex(currentQuiz.current_question_index);
+    }
+  }, [currentQuiz?.id]);
 
   useEffect(() => {
     if (currentQuestion) {
@@ -63,7 +82,8 @@ export default function Gameplay() {
 
   // Timer que atualiza a cada segundo
   useEffect(() => {
-    if (!quizFinished && currentQuiz) {
+    if (!quizFinished && currentQuiz && !loading) {
+      // Iniciar timer apenas quando quiz estiver carregado
       timerIntervalRef.current = setInterval(() => {
         setTimer((prev) => prev + 1);
       }, 1000);
@@ -78,98 +98,205 @@ export default function Gameplay() {
         clearInterval(timerIntervalRef.current);
       }
     };
-  }, [quizFinished, currentQuiz]);
+  }, [quizFinished, currentQuiz, loading]);
 
   const initializeQuiz = async () => {
     try {
       setLoading(true);
+      
+      // Primeiro, tentar buscar quiz ativo
+      try {
+        const activeQuiz = await gameplayService.getCurrentQuiz();
+        if (activeQuiz) {
+          console.log("Quiz ativo encontrado, continuando de onde parou");
+          setCurrentQuiz(activeQuiz);
+          // Carregar pergunta atual
+          await loadCurrentQuestion();
+          return;
+        }
+      } catch (error: any) {
+        // Se retornar 404, não há quiz ativo, continuar para iniciar novo
+        if (error.is404 || (error.message && error.message.includes("404"))) {
+          console.log("Nenhum quiz ativo encontrado, iniciando novo quiz");
+        } else {
+          console.warn("Erro ao verificar quiz ativo:", error);
+          // Continuar para tentar iniciar novo quiz
+        }
+      }
+      
+      // Se não há quiz ativo, iniciar novo
       const response = await gameplayService.startQuiz(quizId);
       setCurrentQuiz(response.quiz);
       setQuestionStartTime(Date.now());
     } catch (error: any) {
       console.error("Erro ao iniciar quiz:", error);
-      Alert.alert("Erro", error.message || "Não foi possível iniciar o quiz", [
+      
+      // Se o erro for "quiz ativo", oferecer opção de continuar
+      if (error.message && error.message.includes("quiz ativo")) {
+        Alert.alert(
+          "Quiz Ativo",
+          "Você já possui um quiz em andamento. Deseja continuar de onde parou?",
+          [
+            {
+              text: "Cancelar",
+              style: "cancel",
+              onPress: () => router.back(),
+            },
+            {
+              text: "Continuar",
+              onPress: async () => {
+                try {
+                  const activeQuiz = await gameplayService.getCurrentQuiz();
+                  if (activeQuiz) {
+                    setCurrentQuiz(activeQuiz);
+                    await loadCurrentQuestion();
+                  }
+                } catch (err: any) {
+                  Alert.alert("Erro", "Não foi possível carregar o quiz ativo", [
+                    { text: "OK", onPress: () => router.back() },
+                  ]);
+                }
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert("Erro", error.message || "Não foi possível iniciar o quiz", [
+          { text: "OK", onPress: () => router.back() },
+        ]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCurrentQuestionByIndex = async (questionIndex: number) => {
+    if (!currentQuiz) {
+      console.warn("Tentando carregar pergunta sem quiz ativo");
+      return;
+    }
+
+    if (questionIndex === undefined || questionIndex === null) {
+      console.error("questionIndex não definido");
+      return;
+    }
+
+    if (questionIndex >= currentQuiz.questions.length) {
+      // Quiz finalizado
+      console.log("Quiz finalizado - todas as perguntas foram respondidas");
+      finishQuiz();
+      return;
+    }
+
+    const questionId = currentQuiz.questions[questionIndex];
+    if (!questionId) {
+      console.error("Question ID não encontrado no índice:", questionIndex);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log(`Carregando pergunta ${questionIndex + 1}/${currentQuiz.questions.length} (ID: ${questionId})`);
+      const question = await gameplayService.getQuestionWithAnswers(questionId);
+      setCurrentQuestion(question);
+      setQuestionStartTime(Date.now());
+      
+      // Verificar se já temos resposta local para esta pergunta
+      const existingAnswer = localAnswers.get(questionId);
+      if (existingAnswer) {
+        setSelectedAnswerId(existingAnswer.answerId);
+      } else {
+        setSelectedAnswerId(null);
+      }
+      
+      console.log("Pergunta carregada com sucesso");
+    } catch (error: any) {
+      console.error("Erro ao carregar pergunta:", error);
+      Alert.alert("Erro", "Não foi possível carregar a pergunta", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } finally {
       setLoading(false);
     }
   };
-
+  
   const loadCurrentQuestion = async () => {
-    if (!currentQuiz) return;
-
-    const questionId = currentQuiz.questions[currentQuiz.current_question_index];
-    if (!questionId) {
-      // Quiz finalizado
-      finishQuiz();
-      return;
-    }
-
-    try {
-      const question = await gameplayService.getQuestionWithAnswers(questionId);
-      setCurrentQuestion(question);
-    } catch (error: any) {
-      console.error("Erro ao carregar pergunta:", error);
-      Alert.alert("Erro", "Não foi possível carregar a pergunta");
-    }
+    await loadCurrentQuestionByIndex(localQuestionIndex);
   };
 
   const handleAnswerSelect = (answerId: string) => {
     setSelectedAnswerId(answerId);
   };
 
-  const handleSubmitAnswer = async () => {
+  const handleSubmitAnswer = () => {
     if (!selectedAnswerId || !currentQuiz || !currentQuestion) {
       Alert.alert("Atenção", "Selecione uma resposta antes de continuar");
       return;
     }
 
-    try {
-      setSubmitting(true);
-      const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
-      
-      const response: SubmitAnswerResponse = await gameplayService.submitAnswer(
-        currentQuiz.id,
-        currentQuestion.id,
-        selectedAnswerId,
-        timeTaken
-      );
+    // Armazenar resposta localmente (não submeter ainda)
+    const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
+    
+    const newAnswers = new Map(localAnswers);
+    newAnswers.set(currentQuestion.id, {
+      questionId: currentQuestion.id,
+      answerId: selectedAnswerId,
+      timeTaken,
+      timestamp: Date.now(),
+    });
+    setLocalAnswers(newAnswers);
 
-      // Atualizar estado do quiz
-      if (currentQuiz) {
-        const updatedQuiz: QuizSession = {
-          ...currentQuiz,
-          current_question_index: response.current_question_index,
-          total_points: response.total_points,
-          correct_answers: response.correct_answers,
-          wrong_answers: response.wrong_answers,
-        };
-        setCurrentQuiz(updatedQuiz);
+    console.log("Resposta armazenada localmente:", {
+      questionId: currentQuestion.id,
+      answerId: selectedAnswerId,
+      timeTaken,
+      totalArmazenadas: newAnswers.size,
+    });
 
-        if (response.is_finished) {
-          finishQuiz();
-        } else {
-          // Avançar para próxima pergunta
-          setSelectedAnswerId(null);
-        }
-      }
-    } catch (error: any) {
-      console.error("Erro ao submeter resposta:", error);
-      Alert.alert("Erro", error.message || "Não foi possível submeter a resposta");
-    } finally {
-      setSubmitting(false);
+    // Avançar para próxima pergunta usando índice local
+    const nextIndex = localQuestionIndex + 1;
+    
+    if (nextIndex >= currentQuiz.questions.length) {
+      // Última pergunta respondida, finalizar quiz
+      console.log("Última pergunta respondida, finalizando quiz...");
+      finishQuiz();
+    } else {
+      // Avançar para próxima pergunta
+      setLocalQuestionIndex(nextIndex);
+      setSelectedAnswerId(null);
     }
   };
 
   const handleAbandonQuiz = async () => {
     Alert.alert(
       "Abandonar Quiz",
-      "Tem certeza que deseja abandonar este quiz? Seu progresso será perdido.",
+      localAnswers.size > 0
+        ? `Você respondeu ${localAnswers.size} pergunta(s). Deseja salvar essas respostas antes de abandonar?`
+        : "Tem certeza que deseja abandonar este quiz?",
       [
         { text: "Cancelar", style: "cancel" },
         {
-          text: "Abandonar",
+          text: "Salvar e Abandonar",
+          style: "default",
+          onPress: async () => {
+            if (!currentQuiz) return;
+            try {
+              // Submeter respostas antes de abandonar
+              if (localAnswers.size > 0) {
+                await submitAllAnswers();
+              }
+              await gameplayService.abandonQuiz(currentQuiz.id);
+              Alert.alert("Quiz Abandonado", "Suas respostas foram salvas", [
+                { text: "OK", onPress: () => router.back() },
+              ]);
+            } catch (error: any) {
+              console.error("Erro ao abandonar quiz:", error);
+              Alert.alert("Erro", "Não foi possível abandonar o quiz");
+            }
+          },
+        },
+        {
+          text: "Abandonar Sem Salvar",
           style: "destructive",
           onPress: async () => {
             if (!currentQuiz) return;
@@ -188,18 +315,129 @@ export default function Gameplay() {
     );
   };
 
-  const finishQuiz = () => {
+  const submitAllAnswers = async () => {
+    if (!currentQuiz || localAnswers.size === 0) {
+      console.warn("Nenhuma resposta para submeter");
+      return null;
+    }
+
+    try {
+      setSubmitting(true);
+      console.log(`Submetendo ${localAnswers.size} respostas...`);
+
+      // Obter índice inicial (pode haver respostas já submetidas se quiz foi retomado)
+      const startIndex = currentQuiz.current_question_index - localAnswers.size;
+      const actualStartIndex = Math.max(0, startIndex);
+
+      // Submeter respostas em ordem (seguindo a ordem das perguntas do quiz)
+      const answersArray = Array.from(localAnswers.values());
+      
+      // Ordenar respostas pela ordem das perguntas no quiz
+      // Começar do índice atual para evitar re-submeter respostas já enviadas
+      const questionsToSubmit = currentQuiz.questions.slice(actualStartIndex);
+      const orderedAnswers = questionsToSubmit
+        .map((questionId) => answersArray.find((a) => a.questionId === questionId))
+        .filter((answer) => answer !== undefined) as Array<{
+          questionId: string;
+          answerId: string;
+          timeTaken: number;
+          timestamp: number;
+        }>;
+
+      console.log(`Submetendo ${orderedAnswers.length} respostas a partir do índice ${actualStartIndex}`);
+
+      // Submeter cada resposta em ordem sequencial
+      let finalResponse: SubmitAnswerResponse | null = null;
+      let submittedCount = 0;
+      
+      for (const answer of orderedAnswers) {
+        try {
+          // Pequeno delay entre submissões para garantir ordem
+          if (submittedCount > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+          
+          const response = await gameplayService.submitAnswer(
+            currentQuiz.id,
+            answer.questionId,
+            answer.answerId,
+            answer.timeTaken
+          );
+          finalResponse = response;
+          submittedCount++;
+          console.log(`Resposta ${answer.questionId} submetida com sucesso (${submittedCount}/${orderedAnswers.length})`);
+          
+          // Atualizar estado do quiz após cada submissão bem-sucedida
+          if (currentQuiz) {
+            const updatedQuiz: QuizSession = {
+              ...currentQuiz,
+              current_question_index: response.current_question_index,
+              total_points: response.total_points,
+              correct_answers: response.correct_answers,
+              wrong_answers: response.wrong_answers,
+            };
+            setCurrentQuiz(updatedQuiz);
+          }
+        } catch (error: any) {
+          console.error(`Erro ao submeter resposta ${answer.questionId}:`, error);
+          // Se for erro de "fora de ordem", pode ser que já foi submetida, continuar
+          if (error.message && error.message.includes("fora de ordem")) {
+            console.warn(`Resposta ${answer.questionId} pode já ter sido submetida, continuando...`);
+            continue;
+          }
+          // Para outros erros, continuar tentando as outras respostas
+        }
+      }
+
+      console.log(`Total de respostas submetidas: ${submittedCount}/${orderedAnswers.length}`);
+      return finalResponse;
+    } catch (error: any) {
+      console.error("Erro ao submeter respostas:", error);
+      throw error;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const finishQuiz = async () => {
     if (!currentQuiz) return;
+    
     setQuizFinished(true);
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
     }
-    setResult({
-      totalPoints: currentQuiz.total_points,
-      correctAnswers: currentQuiz.correct_answers,
-      wrongAnswers: currentQuiz.wrong_answers,
-      totalTime: timer,
-    });
+
+    try {
+      // Submeter todas as respostas antes de finalizar
+      const finalResponse = await submitAllAnswers();
+      
+      if (finalResponse) {
+        setResult({
+          totalPoints: finalResponse.total_points,
+          correctAnswers: finalResponse.correct_answers,
+          wrongAnswers: finalResponse.wrong_answers,
+          totalTime: timer,
+        });
+      } else {
+        // Se não conseguiu submeter, usar valores locais (fallback)
+        setResult({
+          totalPoints: 0,
+          correctAnswers: 0,
+          wrongAnswers: 0,
+          totalTime: timer,
+        });
+        Alert.alert(
+          "Aviso",
+          "Não foi possível calcular a pontuação final. Algumas respostas podem não ter sido salvas."
+        );
+      }
+    } catch (error: any) {
+      console.error("Erro ao finalizar quiz:", error);
+      Alert.alert(
+        "Erro",
+        "Não foi possível finalizar o quiz completamente. Tente novamente."
+      );
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -277,7 +515,8 @@ export default function Gameplay() {
     );
   }
 
-  const currentQuestionNumber = currentQuiz.current_question_index + 1;
+  // Usar índice local para exibição
+  const currentQuestionNumber = localQuestionIndex + 1;
   const totalQuestions = currentQuiz.questions.length;
   const progress = (currentQuestionNumber / totalQuestions) * 100;
 
@@ -331,18 +570,21 @@ export default function Gameplay() {
           </View>
 
           <TouchableOpacity
-            style={[styles.submitButton, (!selectedAnswerId || submitting) && styles.submitButtonDisabled]}
+            style={[styles.submitButton, !selectedAnswerId && styles.submitButtonDisabled]}
             onPress={handleSubmitAnswer}
-            disabled={!selectedAnswerId || submitting}
+            disabled={!selectedAnswerId}
           >
-            {submitting ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.submitButtonText}>
-                {currentQuestionNumber === totalQuestions ? "Finalizar" : "Próxima"}
-              </Text>
-            )}
+            <Text style={styles.submitButtonText}>
+              {currentQuestionNumber === totalQuestions ? "Finalizar" : "Próxima"}
+            </Text>
           </TouchableOpacity>
+          
+          {submitting && (
+            <View style={styles.submittingContainer}>
+              <ActivityIndicator size="small" color="#24bf94" />
+              <Text style={styles.submittingText}>Salvando respostas...</Text>
+            </View>
+          )}
         </ScrollView>
       </View>
     </View>
@@ -550,6 +792,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "500",
     color: "#FFF",
+  },
+  submittingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  submittingText: {
+    fontFamily: "Rubik",
+    fontSize: 14,
+    color: "#24bf94",
+    marginLeft: 10,
   },
 });
 
