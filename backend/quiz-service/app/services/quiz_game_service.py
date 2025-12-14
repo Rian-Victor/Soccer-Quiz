@@ -38,22 +38,23 @@ class QuizGameService:
         
         logger.info(f"🔍 DEBUG: Tentando buscar perguntas...")
       
-        questions = await self.question_repo.get_random_questions(limit=1) #ajustar dps
+        questions = await self.question_repo.get_random_questions(limit=10, team_id=team_id) #ajustar dps
         
         logger.info(f"🔍 DEBUG: Quantidade encontrada: {len(questions)}")
         logger.info(f"🔍 DEBUG: Conteúdo: {questions}")
 
-        if len(questions) < 1:  #ajustar dps
+        if len(questions) < 5:  #ajustar dps
             logger.error("DEBUG: Entrou no IF de erro!")
             raise ValueError("Não há perguntas suficientes para iniciar o quiz")
         
+        question_ids = [str(q.get("id", q.get("_id"))) for q in questions]
         
         session = QuizSession(
             user_id=user_id,
             quiz_type=QuizType(quiz_type), 
             team_id=team_id,
             status=QuizStatus.IN_PROGRESS, 
-            questions=[str(q["id"]) for q in questions],
+            questions=question_ids,
             started_at=datetime.utcnow()
         )
         
