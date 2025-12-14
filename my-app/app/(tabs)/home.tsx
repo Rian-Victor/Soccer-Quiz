@@ -3,96 +3,75 @@ import {
   View,
   Image,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
 } from "react-native";
+import { useRouter } from "expo-router"; 
 
 export default function Home() {
-  // SRP: este componente exibe apenas a tela inicial de quizzes.
+  const router = useRouter(); 
+
+  const handleJogar = () => {
+    console.log("Indo para o jogo...");
+    router.push("/game" as any); 
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
+        
         <View style={styles.logoContent}>
           <Image
             source={require("../../assets/images/LogoBG.png")}
             style={styles.loginLogo}
-          ></Image>
+          />
           <Text style={styles.title}>FUTQUIZ</Text>
         </View>
 
         <ScrollView style={styles.scrollcontent}>
           <View style={styles.quizContent}>
-            <View>
+            
+            <TouchableOpacity onPress={handleJogar} activeOpacity={0.8}>
               <View style={styles.imgMainQuiz}></View>
               <Text style={styles.titleMainQuiz}>
                 Quiz mania: quem é o jogador favorito de CR7
               </Text>
-              <Text>XX/XX/XXXX</Text>
-            </View>
-            <View style={[styles.secondaryQuizzes, { marginTop: 20 }]}>
+              <Text style={{ color: '#666' }}>13/12/2025</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.secondaryQuizzes, { marginTop: 20 }]} 
+              onPress={handleJogar}
+            >
               <View style={styles.imgSecondaryQuiz}></View>
               <View style={styles.contentSecondaryQuiz}>
                 <Text style={styles.titleSecondaryQuiz}>
                   Quiz: Time do Barcelona em 2009
                 </Text>
-                <Text>XX/XX/XXXX</Text>
+                <Text style={{ color: '#666' }}>12/12/2025</Text>
               </View>
-            </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.secondaryQuizzes} onPress={handleJogar}>
+              <View style={styles.imgSecondaryQuiz}></View>
+              <View style={styles.contentSecondaryQuiz}>
+                <Text style={styles.titleSecondaryQuiz}>
+                  Quiz: Campeões da Copa de 2002
+                </Text>
+                <Text style={{ color: '#666' }}>10/12/2025</Text>
+              </View>
+            </TouchableOpacity>
+
             <View style={styles.secondaryQuizzes}>
               <View style={styles.imgSecondaryQuiz}></View>
               <View style={styles.contentSecondaryQuiz}>
                 <Text style={styles.titleSecondaryQuiz}>
-                  Quiz: Time do Barcelona em 2009
+                  Quiz: História do Brasileirão
                 </Text>
-                <Text>XX/XX/XXXX</Text>
+                <Text style={{ color: '#666' }}>09/12/2025</Text>
               </View>
             </View>
-            <View style={styles.secondaryQuizzes}>
-              <View style={styles.imgSecondaryQuiz}></View>
-              <View style={styles.contentSecondaryQuiz}>
-                <Text style={styles.titleSecondaryQuiz}>
-                  Quiz: Time do Barcelona em 2009
-                </Text>
-                <Text>XX/XX/XXXX</Text>
-              </View>
-            </View>
-            <View style={styles.secondaryQuizzes}>
-              <View style={styles.imgSecondaryQuiz}></View>
-              <View style={styles.contentSecondaryQuiz}>
-                <Text style={styles.titleSecondaryQuiz}>
-                  Quiz: Time do Barcelona em 2009
-                </Text>
-                <Text>XX/XX/XXXX</Text>
-              </View>
-            </View>
-            <View style={styles.secondaryQuizzes}>
-              <View style={styles.imgSecondaryQuiz}></View>
-              <View style={styles.contentSecondaryQuiz}>
-                <Text style={styles.titleSecondaryQuiz}>
-                  Quiz: Time do Barcelona em 2009
-                </Text>
-                <Text>XX/XX/XXXX</Text>
-              </View>
-            </View>
-            <View style={styles.secondaryQuizzes}>
-              <View style={styles.imgSecondaryQuiz}></View>
-              <View style={styles.contentSecondaryQuiz}>
-                <Text style={styles.titleSecondaryQuiz}>
-                  Quiz: Time do Barcelona em 2009
-                </Text>
-                <Text>XX/XX/XXXX</Text>
-              </View>
-            </View>
-            <View style={styles.secondaryQuizzes}>
-              <View style={styles.imgSecondaryQuiz}></View>
-              <View style={styles.contentSecondaryQuiz}>
-                <Text style={styles.titleSecondaryQuiz}>
-                  Quiz: Time do Barcelona em 2009
-                </Text>
-                <Text>XX/XX/XXXX</Text>
-              </View>
-            </View>
+
           </View>
         </ScrollView>
       </View>
@@ -101,7 +80,6 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  // CSS Padrão da página + Logo
   container: {
     flex: 1,
     justifyContent: "center",
@@ -118,33 +96,36 @@ const styles = StyleSheet.create({
   },
 
   logoContent: {
-    flex: 0.1,
+    flex: 0.1, 
+    height: 60,
     justifyContent: "center",
     marginTop: 60,
+    marginBottom: 20,
     flexDirection: "row",
+    alignItems: 'center'
   },
 
   scrollcontent: {
     flex: 1,
+    width: '100%', 
   },
 
   loginLogo: {
     width: 35,
     height: 35,
-    marginBottom: 0,
     marginRight: 10,
   },
 
   title: {
     fontFamily: "Rubik",
     fontSize: 25,
-    fontWeight: 500,
+    fontWeight: "bold", 
   },
-
-  // Quiz
 
   quizContent: {
     width: 350,
+    alignSelf: 'center',
+    paddingBottom: 50
   },
 
   secondaryQuizzes: {
@@ -152,7 +133,6 @@ const styles = StyleSheet.create({
     columnGap: 5,
     marginBottom: 10,
     marginTop: 10,
-    flex: 1,
   },
 
   imgMainQuiz: {
@@ -171,6 +151,7 @@ const styles = StyleSheet.create({
   contentSecondaryQuiz: {
     width: 170,
     paddingLeft: 5,
+    justifyContent: 'center'
   },
 
   titleMainQuiz: {
@@ -178,11 +159,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginTop: 10,
     marginBottom: 7,
+    fontWeight: "500" 
   },
 
   titleSecondaryQuiz: {
     fontFamily: "Rubik",
-    fontWeight: 300,
     marginBottom: 7,
+    fontWeight: "300" 
   },
 });
