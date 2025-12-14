@@ -4,6 +4,7 @@ from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 from bson.errors import InvalidId
+from datetime import datetime
 
 from app.schemas.quiz_session import QuizSession, QuizStatus 
 
