@@ -1,212 +1,117 @@
-const API_BASE_URL = "http://172.20.10.6:3003";
+import axios from "axios";
+import { appSettings } from "../Configs/settings";
 
-export interface QuestionCreate {
-  statement: string;
-  topic: string;
-  difficulty: string;
+export interface LoginRequest {
+  email: string;
+  password: string;
 }
 
-export interface QuestionResponse {
-  id: string;
-  statement: string;
-  topic: string;
-  difficulty: string;
+export interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_at: string;
+  user_id: number;
+  role: string;
 }
 
-export interface TeamCreate {
-  name: string;
-  country: string;
-  members: number[];
+export interface LogoutRequest {
+  refresh_token: string;
 }
 
-export interface TeamResponse {
-  id: string;
-  name: string;
-  country: string;
-  members: number[];
+export interface LogoutResponse {
+  message: string;
 }
 
-export interface AnswerCreate {
-  questionId: string;
-  text: string;
-  correct: boolean;
+export interface RefreshTokenRequest {
+  refresh_token: string;
 }
 
-export interface AnswerResponse {
-  id: string;
-  questionId: string;
-  text: string;
-  correct: boolean;
-}
-export interface TeamCreate {
-  name: string;
-  country: string;
-  members: number[];
+export interface RefreshTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_at: string;
 }
 
-export interface TeamResponse {
-  id: string;
-  name: string;
-  country: string;
-  members: number[];
-}
+// Instância do axios sem token para rotas de autenticação (login/logout/refresh)
+const authAxios = axios.create({
+  baseURL: appSettings.URL.backend.api,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
-export const answerService = {
-  async createAnswer(answerData: AnswerCreate): Promise<AnswerResponse> {
-    console.log("Criando resposta...");
+// SRP: authService encapsula apenas chamadas relacionadas à autenticação.
+// OCP: novos endpoints de auth podem ser adicionados aqui sem alterar o contrato utilizado pelos consumidores.
+export const authService = {
+  async login(loginData: LoginRequest): Promise<LoginResponse> {
+    console.log("Fazendo login...");
 
-    const response = await fetch(`${API_BASE_URL}/answers`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(answerData),
-    });
-
-    console.log("Status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro:", errorText);
+    try {
+      const response = await authAxios.post<LoginResponse>(
+        "/auth/login",
+        loginData
+      );
+      console.log("Status:", response.status);
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao fazer login";
+      console.error("Erro:", errorMessage);
       throw new Error(
-        `Erro ao criar resposta: ${response.status} - ${errorText}`
+        `Erro ao fazer login: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
       );
     }
-
-    return await response.json();
   },
 
-  async getAnswersByQuestion(questionId: string): Promise<AnswerResponse[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/answers?question_id=${questionId}`
-    );
+  async logout(logoutData: LogoutRequest): Promise<LogoutResponse> {
+    console.log("Fazendo logout...");
 
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar respostas: ${response.statusText}`);
-    }
-
-    return await response.json();
-  },
-};
-
-export const questionService = {
-  async createQuestion(
-    questionData: QuestionCreate
-  ): Promise<QuestionResponse> {
-    const response = await fetch(`${API_BASE_URL}/questions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(questionData),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro detalhado da API:", errorText);
+    try {
+      const response = await authAxios.post<LogoutResponse>(
+        "/auth/logout",
+        logoutData
+      );
+      console.log("Status:", response.status);
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail || error.message || "Erro ao fazer logout";
+      console.error("Erro:", errorMessage);
       throw new Error(
-        `Erro ao criar pergunta: ${response.status} - ${errorText}`
+        `Erro ao fazer logout: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
       );
     }
-
-    return await response.json();
   },
 
-  async getQuestions(
-    skip: number = 0,
-    limit: number = 100
-  ): Promise<QuestionResponse[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/questions?skip=${skip}&limit=${limit}`
-    );
+  async refreshToken(
+    refreshData: RefreshTokenRequest
+  ): Promise<RefreshTokenResponse> {
+    console.log("Renovando token...");
 
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar perguntas: ${response.statusText}`);
+    try {
+      const response = await authAxios.post<RefreshTokenResponse>(
+        "/auth/refresh",
+        refreshData
+      );
+      console.log("Status:", response.status);
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao renovar token";
+      console.error("Erro:", errorMessage);
+      throw new Error(
+        `Erro ao renovar token: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
+      );
     }
-
-    return await response.json();
-  },
-
-  async getQuestionById(questionId: string): Promise<QuestionResponse> {
-    const response = await fetch(`${API_BASE_URL}/questions/${questionId}`);
-
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar pergunta: ${response.statusText}`);
-    }
-
-    return await response.json();
-  },
-
-  async updateQuestion(
-    questionId: string,
-    questionData: Partial<QuestionCreate>
-  ): Promise<QuestionResponse> {
-    const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(questionData),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Erro ao atualizar pergunta: ${response.statusText}`);
-    }
-
-    return await response.json();
-  },
-
-  async deleteQuestion(questionId: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      throw new Error(`Erro ao deletar pergunta: ${response.statusText}`);
-    }
-  },
-};
-
-export const teamService = {
-  async createTeam(teamData: TeamCreate): Promise<TeamResponse> {
-    const response = await fetch(`${API_BASE_URL}/teams`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(teamData),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erro ao criar time: ${response.status} - ${errorText}`);
-    }
-
-    return await response.json();
-  },
-
-  async getTeams(
-    skip: number = 0,
-    limit: number = 100
-  ): Promise<TeamResponse[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/teams?skip=${skip}&limit=${limit}`
-    );
-
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar times: ${response.statusText}`);
-    }
-
-    return await response.json();
-  },
-
-  async getTeamById(teamId: string): Promise<TeamResponse> {
-    const response = await fetch(`${API_BASE_URL}/teams/${teamId}`);
-
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar time: ${response.statusText}`);
-    }
-
-    return await response.json();
   },
 };
