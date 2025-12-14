@@ -6,6 +6,8 @@ from fastapi import APIRouter, Request
 from app.services.proxy import ProxyService
 
 router = APIRouter()
+# ISP: o router define proxies separados por domínio, mantendo cada interface segregada.
+# DIP: delegamos o comportamento de proxy a um serviço especializado em vez de misturar no router.
 proxy_service = ProxyService()
 
 # ==========================================

@@ -8,6 +8,7 @@ import httpx
 from app.config import settings
 
 
+# SRP: ProxyService cuida apenas do encaminhamento das requisições, sem misturar regras de negócio.
 class ProxyService:
     """Serviço para fazer proxy de requisições para microsserviços"""
     

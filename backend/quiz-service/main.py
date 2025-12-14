@@ -12,9 +12,13 @@ from app.config import settings
 from app.database import init_db, close_db
 from app.messaging.producer import event_producer
 
-from app.routers import teams, questions, answers       
-from app.routers import quiz_routes 
+from app.routers import teams, questions, answers
+from app.routers import quiz_routes
 
+from app.routers import teams, questions, answers
+from app.database import init_db
+
+# SRP: gerencia apenas o ciclo de vida do Quiz Service, sem misturar lógica de roteamento.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("🔄 Inicializando conexões...")
@@ -22,14 +26,14 @@ async def lifespan(app: FastAPI):
     await init_db()
 
     await event_producer.connect()
-    
+
     print(f"🚀 Quiz Service iniciado na porta {settings.PORT}")
     print(f"📚 Documentação disponível em: http://localhost:{settings.PORT}/docs")
-    
-    yield 
+
+    yield
     print("🛑 Encerrando conexões...")
     await event_producer.close()
-    await close_db()             
+    await close_db()
     print("✅ Quiz Service encerrado com sucesso")
 
 
@@ -65,8 +69,8 @@ app.include_router(quiz_routes.router)
 async def root():
     """Health check endpoint simples"""
     return {
-        "service": "quiz-service", 
-        "status": "running", 
+        "service": "quiz-service",
+        "status": "running",
         "version": "1.0.0",
         "features": ["crud", "gameplay", "rabbitmq-producer"]
     }

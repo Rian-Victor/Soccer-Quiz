@@ -13,6 +13,7 @@ from app.dependencies import get_team_repo
 from app.dependencies import require_admin_role
 
 
+# ISP: este router atende só os endpoints de times, mantendo segregada a interface de perguntas e respostas.
 router = APIRouter()
 
 

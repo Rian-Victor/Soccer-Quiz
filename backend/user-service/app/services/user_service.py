@@ -9,7 +9,7 @@ import logging
 
 from app.models import User, UserRole
 from app.interfaces.user_repository import IUserRepository
-from app.producers import RabbitMQProducer 
+from app.producers import RabbitMQProducer
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -20,10 +20,11 @@ class UserService:
     """Serviço para gerenciar usuários"""
     
     def __init__(self, repository: IUserRepository, db: Session = None):
+    # DIP: depende de IUserRepository para não acoplar diretamente à camada de persistência.
         self.repository = repository
         self.db = db
         self.producer = RabbitMQProducer()
-    
+
     @staticmethod
     def hash_password(password: str) -> str:
         return pwd_context.hash(password)
@@ -36,9 +37,9 @@ class UserService:
         existing_user = self.repository.get_by_email(email)
         if existing_user:
             raise ValueError(f"Email {email} já está em uso")
-        
+
         password_hash = self.hash_password(password)
-        
+
         user = User(
             name=name,
             email=email,
@@ -93,7 +94,7 @@ class UserService:
         user = self.repository.get_by_id(user_id)
         if not user:
             return False
-        
+
         try:
             import httpx
             with httpx.Client() as client:
@@ -103,11 +104,10 @@ class UserService:
                 )
         except Exception as e:
             logger.error(f"❌ Erro ao limpar tokens no auth-service: {e}")
-            
+
         deleted = self.repository.delete(user_id)
-        
+
         if deleted:
             logger.info(f"✅ Usuário {user_id} deletado com sucesso")
-        
+
         return deleted
-        

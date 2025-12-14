@@ -34,6 +34,8 @@ export interface RefreshTokenResponse {
   expires_at: string;
 }
 
+// SRP: authService encapsula apenas chamadas relacionadas à autenticação.
+// OCP: novos endpoints de auth podem ser adicionados aqui sem alterar o contrato utilizado pelos consumidores.
 // Instância do axios sem token para rotas de autenticação (login/logout/refresh)
 const authAxios = axios.create({
   baseURL: appSettings.URL.backend.api,
@@ -87,6 +89,8 @@ export const authService = {
         } - ${errorMessage}`
       );
     }
+
+    return await response.json();
   },
 
   async refreshToken(

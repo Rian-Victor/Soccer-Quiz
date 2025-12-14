@@ -23,11 +23,13 @@ logger = logging.getLogger(__name__)
 class AuthService:
     """Serviço para gerenciar autenticação"""
     
+    # DIP: recebe JwtService via construtor para depender apenas da abstração de geração de tokens.
+    def __init__(self, jwt_service: JwtService):
     def __init__(self, jwt_service: JwtService, user_service_client: UserServiceClient, db: Session = None):
         self.jwt_service = jwt_service
         self.user_service_client = user_service_client
         self.db = db
-    
+
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """
         Verifica se a senha está correta
@@ -143,11 +145,11 @@ class AuthService:
         )
         
         return access_token, refresh_token, db_token.expires_at
-    
+
     # ==========================================================
-    # RECUPERAÇÃO DE SENHA 
+    # RECUPERAÇÃO DE SENHA
     # ==========================================================
-    
+
     async def forgot_password(self, email: str):
         if not self.db:
             raise RuntimeError("Database session não disponível")
@@ -156,46 +158,46 @@ class AuthService:
 
         if not user_data:
             logger.info(f"Email não encontrado: {email}")
-            return 
+            return
 
         # Gerar Token
         token = secrets.token_urlsafe(32)
         expires_at = datetime.utcnow() + timedelta(minutes=15)
-        
+
         reset_token = PasswordResetToken(
-            user_id=user_data.id, 
+            user_id=user_data.id,
             token=token,
             expires_at=expires_at
         )
-        
+
         self.db.add(reset_token)
         self.db.commit()
 
         # Publicar no RabbitMQ
         #reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-        
-    
+
+
         user_name = getattr(user_data, 'name', 'Usuário')
 
         try:
             producer = RabbitMQProducer()
             await producer.publish_password_reset(
                 email=email,
-                token=token, 
+                token=token,
                 user_name=user_name
             )
             logger.info(f"✅ Evento de reset enviado para {email}")
         except Exception as e:
             logger.error(f"⚠️ Falha ao publicar no RabbitMQ: {e}")
 
-        
+
         return True
 
     def validate_reset_token(self, token: str, db: Session) -> bool:
         reset_token = db.query(PasswordResetToken).filter(
             PasswordResetToken.token == token
         ).first()
-        
+
         if not reset_token or reset_token.used or datetime.utcnow() > reset_token.expires_at:
             return False
         return True
@@ -205,19 +207,19 @@ class AuthService:
         reset_token = db.query(PasswordResetToken).filter(
             PasswordResetToken.token == token
         ).with_for_update().first()
-        
+
         if not reset_token or reset_token.used or datetime.utcnow() > reset_token.expires_at:
              raise HTTPException(status_code=400, detail="Token inválido ou expirado")
 
         # 2. Hash da senha
         new_password_hash = self.hash_password(new_password)
-        
+
         # 3. Usar o Client para atualizar a senha (Abstração limpa)
         success = await self.user_service_client.update_password(
-            user_id=reset_token.user_id, 
+            user_id=reset_token.user_id,
             new_password_hash=new_password_hash
         )
-        
+
         if not success:
             raise HTTPException(status_code=503, detail="Erro ao atualizar senha no serviço de usuários")
 
@@ -226,5 +228,5 @@ class AuthService:
         reset_token.used_at = datetime.utcnow()
         db.add(reset_token)
         db.commit()
-        
+
         return True
