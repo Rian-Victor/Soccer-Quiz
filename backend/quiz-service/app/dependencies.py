@@ -24,7 +24,6 @@ from app.messaging.producer import EventProducer
 # ------------------------------------------------------------------
 
 
-
 async def require_admin_role(
         x_user_role: Optional[str] = Header(None, alias="X-User-Role")
 ) -> str:
