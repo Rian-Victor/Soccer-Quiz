@@ -10,6 +10,7 @@ from app.database import get_database
 from app.repositories.team_repository import TeamRepository
 #from app.interfaces.repositories import ITeamRepository
 from app.dependencies import get_team_repo
+from app.dependencies import require_admin_role
 
 
 router = APIRouter()
@@ -43,7 +44,8 @@ class TeamResponse(BaseModel):
 @router.post("", response_model=TeamResponse, status_code=status.HTTP_201_CREATED)
 async def create_team(
     team_data: TeamCreate,
-    repository: TeamRepository = Depends(get_team_repo)
+    repository: TeamRepository = Depends(get_team_repo),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Cria um novo time (apenas admin)"""
     team_dict = team_data.model_dump()
@@ -81,7 +83,8 @@ async def get_team(
 # async def update_team(
 #     team_id: str,
 #     team_data: TeamUpdate,
-#     repository: ITeamRepository = Depends(get_team_repository)
+#     repository: ITeamRepository = Depends(get_team_repository),
+#    _admin_role: str = Depends(require_admin_role)
 # ):
 #     """Atualiza um time (apenas admin)"""
 #     update_dict = team_data.model_dump(exclude_none=True)
@@ -97,7 +100,8 @@ async def get_team(
 @router.delete("/{team_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_team(
     team_id: str,
-    repository: TeamRepository = Depends(get_team_repo)
+    repository: TeamRepository = Depends(get_team_repo),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Deleta um time (apenas admin)"""
     success = await repository.delete(team_id)

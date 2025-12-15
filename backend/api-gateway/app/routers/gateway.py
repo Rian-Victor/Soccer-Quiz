@@ -72,10 +72,10 @@ async def proxy_user(path: str, request: Request):
 async def proxy_gameplay(path: str, request: Request):
     """
     Roteia o Gameplay (Start, Answer, Abandon)
-    Gateway: /api/quiz/start -> QuizService: /api/quiz/start
+    Gateway: /api/quiz/start -> QuizService: /quizzes/start
     """
-    # Reconstrói o caminho completo que o microsserviço espera
-    full_path = f"api/quiz/{path}"
+    # O quiz-service usa prefixo /quizzes, então mapeamos /api/quiz para /quizzes
+    full_path = f"quizzes/{path}"
     return await proxy_service.proxy_request("quiz", full_path, request)
 
 @router.api_route("/api/leaderboard/{path:path}", methods=["GET", "OPTIONS"])
@@ -134,4 +134,17 @@ async def proxy_answers(path: str, request: Request):
 async def proxy_answers_root(request: Request):
     """Roteia requisições para quiz-service - Answers (root)"""
     return await proxy_service.proxy_request("quiz", "answers", request)
+
+
+@router.api_route("/quizzes-admin/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+async def proxy_quizzes_admin(path: str, request: Request):
+    """Roteia requisições para quiz-service - Quizzes Admin (CRUD de quizzes pré-definidos)"""
+    full_path = f"quizzes-admin/{path}" if path else "quizzes-admin"
+    return await proxy_service.proxy_request("quiz", full_path, request)
+
+
+@router.api_route("/quizzes-admin", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+async def proxy_quizzes_admin_root(request: Request):
+    """Roteia requisições para quiz-service - Quizzes Admin (root)"""
+    return await proxy_service.proxy_request("quiz", "quizzes-admin", request)
 

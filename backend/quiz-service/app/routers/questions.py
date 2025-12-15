@@ -12,7 +12,7 @@ from app.dependencies import get_question_admin_service, get_question_repo
 from app.repositories.question_repository import QuestionRepository
 from app.services.question_admin_service import QuestionAdminService
 #from app.interfaces.repositories import IQuestionRepository
-
+from app.dependencies import require_admin_role
 
 router = APIRouter()
 
@@ -46,7 +46,8 @@ class QuestionResponse(BaseModel):
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_question(
     payload: QuestionCreateRequest,
-    service: QuestionAdminService = Depends(get_question_admin_service)
+    service: QuestionAdminService = Depends(get_question_admin_service),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Cria uma nova pergunta (apenas admin)"""
     return await service.create_full_question(payload)
@@ -59,7 +60,19 @@ async def get_questions(
     repository: QuestionRepository = Depends(get_question_repo)
 ):
     """Lista todas as perguntas (apenas admin)"""
-    return await repository.get_all(skip=skip, limit=limit)
+    questions = await repository.get_all(skip=skip, limit=limit)
+    # Garantir que todas as questões tenham id válido e converter para QuestionDB
+    result = []
+    for q in questions:
+        try:
+            # O repositório já retorna com 'id' convertido de '_id'
+            # QuestionDB aceita tanto 'id' quanto '_id' com populate_by_name=True
+            question_db = QuestionDB(**q)
+            result.append(question_db)
+        except Exception as e:
+            print(f"Erro ao serializar questão: {e}, dados: {q}")
+            continue
+    return result
 
 @router.get("/{question_id}", response_model=QuestionDB)
 async def get_question(
@@ -80,7 +93,8 @@ async def get_question(
 # async def update_question(
 #     question_id: str,
 #     question_data: QuestionUpdate,
-#     repository: IQuestionRepository = Depends(get_question_repository)
+#     repository: IQuestionRepository = Depends(get_question_repository),
+#     _admin_role: str = Depends(require_admin_role)
 # ):
 #     """Atualiza uma pergunta (apenas admin)"""
 #     update_dict = question_data.model_dump(exclude_none=True)
@@ -96,7 +110,8 @@ async def get_question(
 @router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_question(
     question_id: str,
-    repository: QuestionRepository = Depends(get_question_repo)
+    repository: QuestionRepository = Depends(get_question_repo),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Deleta uma pergunta (apenas admin)"""
     success = await repository.delete(question_id)

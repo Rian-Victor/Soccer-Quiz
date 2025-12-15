@@ -193,7 +193,6 @@ const styles = StyleSheet.create({
     width: 320,
     height: 55,
     backgroundColor: "#24BF94",
-    justifyContent: 'center',
     borderRadius: 10,
     marginBottom:15
   },
@@ -216,4 +215,3 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   }
 })
-

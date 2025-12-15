@@ -36,6 +36,14 @@ class AnswerRepository:
             
         return answers
     
+    async def get_correct_answer_by_question(self, question_id: str) -> Optional[Dict[str, Any]]:
+        """Busca a resposta correta de uma pergunta específica"""
+        answer = await self.collection.find_one({
+            "questionId": question_id,
+            "correct": True
+        })
+        return self._convert_id(answer) if answer else None
+    
     async def create(self, answer_data: Dict[str, Any]) -> Dict[str, Any]:
         """Cria uma nova resposta"""
         result = await self.collection.insert_one(answer_data)

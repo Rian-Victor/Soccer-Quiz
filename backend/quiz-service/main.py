@@ -13,10 +13,7 @@ from app.database import init_db, close_db
 from app.messaging.producer import event_producer
 
 from app.routers import teams, questions, answers
-from app.routers import quiz_routes
-
-from app.routers import teams, questions, answers
-from app.database import init_db
+from app.routers import quiz_routes, quizzes_admin
 
 # SRP: gerencia apenas o ciclo de vida do Quiz Service, sem misturar lógica de roteamento.
 @asynccontextmanager
@@ -59,6 +56,7 @@ app.add_middleware(
 app.include_router(teams.router, prefix="/teams", tags=["teams"])
 app.include_router(questions.router, prefix="/questions", tags=["questions"])
 app.include_router(answers.router, prefix="/answers", tags=["answers"])
+app.include_router(quizzes_admin.router)  # CRUD de quizzes pré-definidos
 
 # 2. Rotas de Gameplay (App Mobile)
 app.include_router(quiz_routes.router)

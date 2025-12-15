@@ -15,8 +15,10 @@ class Settings(BaseSettings):
     # Modo debug
     DEBUG: bool = True
 
-    # RABBIT
-    RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
+    # RabbitMQ Configuration
+    RABBITMQ_URL: str = "amqp://guest:guest@rabbitmq:5672/"
+    RABBITMQ_EXCHANGE: str = "notifications"
+    
     
     # MongoDB
     MONGODB_URL: str = "mongodb://localhost:27017/quiz_db"

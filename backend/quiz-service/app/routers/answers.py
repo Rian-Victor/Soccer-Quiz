@@ -10,6 +10,7 @@ from app.dependencies import get_answer_repo
 
 from app.repositories.answer_repository import AnswerRepository
 #from app.interfaces.repositories import IAnswerRepository
+from app.dependencies import require_admin_role
 
 
 router = APIRouter()
@@ -44,9 +45,20 @@ class AnswerResponse(BaseModel):
 @router.post("", response_model=AnswerResponse, status_code=status.HTTP_201_CREATED)
 async def create_answer(
     answer_data: AnswerCreate,
-    repository: AnswerRepository = Depends(get_answer_repo)
+    repository: AnswerRepository = Depends(get_answer_repo),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Cria uma nova resposta (apenas admin)"""
+    # Se a resposta está marcada como correta, verificar se já existe outra correta
+    if answer_data.correct:
+        existing_correct = await repository.get_correct_answer_by_question(answer_data.questionId)
+        if existing_correct:
+            # Atualizar a resposta anterior para incorreta
+            await repository.update(
+                existing_correct["id"],
+                {"correct": False}
+            )
+    
     answer_dict = answer_data.model_dump()
     answer = await repository.create(answer_dict)
     return AnswerResponse(**answer)
@@ -99,7 +111,8 @@ async def get_answers(
 @router.delete("/{answer_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_answer(
     answer_id: str,
-    repository: AnswerRepository = Depends(get_answer_repo)
+    repository: AnswerRepository = Depends(get_answer_repo),
+    _admin_role: str = Depends(require_admin_role)
 ):
     success = await repository.delete(answer_id)
     if not success:

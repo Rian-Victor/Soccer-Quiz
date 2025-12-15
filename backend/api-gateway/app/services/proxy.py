@@ -19,6 +19,14 @@ class ProxyService:
         "quiz": settings.QUIZ_SERVICE_URL,
     }
     
+    # Mapeamento de prefixos por serviço
+    # Esses prefixos são adicionados ao path antes de fazer proxy
+    SERVICE_PREFIXES = {
+        "auth": "/auth",  # Auth service espera /auth/login, /auth/logout, etc.
+        "user": "/users",  # User service espera /users/{id}, /users/by-email, etc.
+        "quiz": "",  # Quiz service não precisa de prefixo adicional (já incluído no path)
+    }
+    
     def __init__(self):
         self.client = httpx.AsyncClient(timeout=30.0)
     
@@ -47,12 +55,31 @@ class ProxyService:
                 detail=f"Serviço '{service}' não configurado"
             )
         
-        # Construir URL completa
-        full_path = f"/{path}" if path else ""
+        # Obter prefixo do serviço (se houver)
+        service_prefix = self.SERVICE_PREFIXES.get(service, "")
+        
+        # Construir path completo com prefixo
+        if service_prefix:
+            # Se o path já começar com o prefixo, não adicionar novamente
+            if path and path.startswith(service_prefix):
+                full_path = path
+            else:
+                # Remover barra inicial do path se houver, para evitar duplicação
+                clean_path = path.lstrip("/") if path else ""
+                # Construir path: /prefixo/caminho
+                full_path = f"{service_prefix}/{clean_path}" if clean_path else service_prefix
+        else:
+            # Sem prefixo, usar o path diretamente
+            full_path = f"/{path.lstrip('/')}" if path else ""
+        
+        # Adicionar query string se houver
         if request.url.query:
             full_path += f"?{request.url.query}"
         
         target_url = f"{service_url}{full_path}"
+        
+        # Log para debug (pode ser removido após confirmação)
+        print(f"[Proxy] Service: {service}, Path recebido: {path}, URL final: {target_url}")
         
         # Preparar headers (filtrar headers relevantes)
         headers = {}
@@ -64,11 +91,20 @@ class ProxyService:
             "accept-language",
             "user-agent",
             "x-user-id",
+            "x-user-role",
         ]
         
         for key in request.headers:
             if key.lower() in header_keys_to_forward:
                 headers[key] = request.headers[key]
+        
+        # Adicionar headers de user_role e user_id do estado da requisição
+        # (extraídos pelo JWT middleware)
+        if hasattr(request.state, "user_role"):
+            headers["X-User-Role"] = request.state.user_role
+        
+        if hasattr(request.state, "user_id"):
+            headers["X-User-Id"] = str(request.state.user_id)
         
         # Ler body da requisição
         body = await request.body()

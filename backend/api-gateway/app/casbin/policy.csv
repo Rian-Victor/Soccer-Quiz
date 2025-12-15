@@ -1,3 +1,4 @@
+# Políticas para admin - CRUD completo
 p, admin, /api/users, POST
 p, admin, /api/users, GET
 p, admin, /api/users/*, GET
@@ -5,18 +6,36 @@ p, admin, /api/users/*, PATCH
 p, admin, /api/users/*, DELETE
 p, admin, /api/teams, POST
 p, admin, /api/teams, GET
+p, admin, /api/teams/*, GET
 p, admin, /api/teams/*, PATCH
 p, admin, /api/teams/*, DELETE
 p, admin, /api/questions, POST
 p, admin, /api/questions, GET
+p, admin, /api/questions/*, GET
 p, admin, /api/questions/*, PATCH
 p, admin, /api/questions/*, DELETE
 p, admin, /api/answers, POST
 p, admin, /api/answers, GET
+p, admin, /api/answers/*, GET
 p, admin, /api/answers/*, PATCH
 p, admin, /api/answers/*, DELETE
+
+# Políticas para comum - Apenas leitura e gameplay
+p, comum, /api/teams, GET
+p, comum, /api/teams/*, GET
+p, comum, /api/questions, GET
+p, comum, /api/questions/*, GET
+p, comum, /api/answers, GET
+p, comum, /api/answers/*, GET
+p, comum, /api/quiz/*, GET
+p, comum, /api/quiz/*, POST
+p, comum, /api/leaderboard/*, GET
+
+# Políticas de autenticação - ambos podem fazer login/logout
 p, admin, /api/auth/login, POST
 p, admin, /api/auth/logout, POST
 p, comum, /api/auth/login, POST
 p, comum, /api/auth/logout, POST
+p, admin, /api/auth/refresh, POST
+p, comum, /api/auth/refresh, POST
 

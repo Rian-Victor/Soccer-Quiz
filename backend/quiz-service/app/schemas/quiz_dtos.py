@@ -6,6 +6,7 @@ from .quiz_session import QuizType
 class StartQuizRequest(BaseModel):
     quiz_type: QuizType = QuizType.GENERAL
     team_id: Optional[str] = None
+    quiz_id: Optional[str] = None  # ID do quiz pré-definido
 
     @model_validator(mode='after')
     def check_team_id_required(self):

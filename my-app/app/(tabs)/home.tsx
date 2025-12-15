@@ -8,25 +8,28 @@ import {
   ActivityIndicator,
   Alert
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
-import { teamService, TeamResponse } from "../../services/quizApi";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useState, useCallback } from "react";
+import { quizService, QuizResponse } from "../../services/quizApi";
 
 export default function Home() {
   const router = useRouter();
-  const [teams, setTeams] = useState<TeamResponse[]>([]);
+  const [quizzes, setQuizzes] = useState<QuizResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchTeams();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchQuizzes();
+    }, [])
+  );
 
-  const fetchTeams = async () => {
+  const fetchQuizzes = async () => {
     try {
-      const data = await teamService.getTeams();
-      setTeams(data);
+      setLoading(true);
+      const data = await quizService.getQuizzes();
+      setQuizzes(data);
     } catch (error) {
-      console.log("Erro ao buscar times:", error);
+      console.log("Erro ao buscar quizzes:", error);
     } finally {
       setLoading(false);
     }
@@ -39,17 +42,17 @@ export default function Home() {
     } as any);
   };
 
-  const handleJogarTime = (teamId: string, teamName: string) => {
+  const handleJogarQuiz = (quizId: string, quizTitle: string) => {
     Alert.alert(
-      "Quiz de time",
-      `Deseja iniciar o Quiz do ${teamName}?`,
+      "Iniciar Quiz",
+      `Deseja jogar o "${quizTitle}"?`,
       [
         { text: "Cancelar", style: "cancel" },
         {
           text: "JOGAR",
           onPress: () => router.push({
             pathname: "/game",
-            params: { mode: "team", teamId: teamId }
+            params: { mode: "custom", quizId: quizId } 
           } as any)
         }
       ]
@@ -77,30 +80,34 @@ export default function Home() {
               </View>
               <View style={styles.mainCardText}>
                 <Text style={styles.titleMainQuiz}>Quiz Geral: Teste seus conhecimentos gerais sobre futebol!</Text>
-                <Text style={{ color: '#666' }}>04/12/2024</Text>
+                <Text style={{ color: '#666' }}>Desafio Diário</Text>
               </View>
             </TouchableOpacity>
-
+1
             {loading ? (
               <ActivityIndicator color="#24bf94" style={{ marginTop: 20 }} />
-            ) : teams.length === 0 ? (
-              <Text style={{ color: '#999', fontStyle: 'italic' }}></Text>
+            ) : quizzes.length === 0 ? (
+              <Text style={{ color: '#999', fontStyle: 'italic', marginTop: 10 }}>
+                Nenhum quiz criado ainda.
+              </Text>
             ) : (
-              teams.map((team) => (
+              quizzes.map((quiz) => (
                 <TouchableOpacity
-                  key={team.id}
+                  key={quiz.id}
                   style={styles.secondaryQuizzes}
-                  onPress={() => handleJogarTime(team.id, team.name)}
+                  onPress={() => handleJogarQuiz(quiz.id, quiz.title)}
                 >
                   <View style={styles.imgSecondaryQuiz}>
-                    <Text style={styles.teamInitial}>{team.name.substring(0, 1)}</Text>
+                    <Text style={styles.teamInitial}>
+                        {quiz.title ? quiz.title.substring(0, 1).toUpperCase() : "?"}
+                    </Text>
                   </View>
                   <View style={styles.contentSecondaryQuiz}>
                     <Text style={styles.titleSecondaryQuiz}>
-                      Quiz do {team.name}
+                      {quiz.title}
                     </Text>
-                    <Text style={{ color: '#a8a4a4ff', fontSize: 14 }}>
-                      16/12/2025
+                    <Text style={{ color: '#a8a4a4ff', fontSize: 14 }} numberOfLines={1}>
+                      {quiz.description || "Sem descrição"}
                     </Text>
                   </View>
                 </TouchableOpacity>
