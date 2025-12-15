@@ -8,9 +8,10 @@ import {
   Modal,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from "react-native";
-import { useState, useEffect } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useState, useCallback } from "react";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router"; // Importando useFocusEffect
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   teamService,
@@ -30,23 +31,26 @@ export default function CreateQuiz() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [teams, setTeams] = useState<TeamWithMembers[]>([]);
   const [questions, setQuestions] = useState<QuestionResponse[]>([]);
-  const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(
-    new Set()
-  );
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set());
+  
   const [modalVisible, setModalVisible] = useState(false);
   const [quizModalVisible, setQuizModalVisible] = useState(false);
+  
   const [newTeam, setNewTeam] = useState({
     name: "",
     country: "",
     members: "",
   });
+  
   const [newQuiz, setNewQuiz] = useState({
     title: "",
     description: "",
   });
+  
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const params = useLocalSearchParams();
+  
+  const router = useRouter();
 
   const categories = [
     { id: 1, name: "Futmesa" },
@@ -55,18 +59,22 @@ export default function CreateQuiz() {
     { id: 4, name: "Futvôlei" },
   ];
 
-  useEffect(() => {
-    loadUserRole();
-    loadTeams();
-    loadQuestions();
-  }, []);
+  // --- MUDANÇA PRINCIPAL AQUI ---
+  // Usamos useFocusEffect para recarregar sempre que a tela aparecer
+  useFocusEffect(
+    useCallback(() => {
+      loadUserRole();
+      loadTeams();
+      loadQuestions();
+    }, [])
+  );
 
   const loadUserRole = async () => {
     try {
       const role = await AsyncStorage.getItem("user_role");
       setUserRole(role);
     } catch (error) {
-      console.error("Erro ao carregar role do usuário:", error);
+      console.error("Erro ao carregar role:", error);
     }
   };
 
@@ -85,82 +93,62 @@ export default function CreateQuiz() {
 
   const loadQuestions = async () => {
     try {
-      console.log("Buscando questões...");
+      setLoading(true); // Feedback visual rápido
+      console.log("🔄 Buscando questões atualizadas...");
+      
       const existingQuestions = await questionService.getQuestions();
-      console.log("Questões recebidas da API:", existingQuestions);
-      console.log("Total de questões recebidas:", existingQuestions.length);
+      
+      if (!existingQuestions) {
+          setQuestions([]);
+          return;
+      }
 
-      // Log detalhado de cada questão
-      existingQuestions.forEach((q, idx) => {
-        console.log(`Questão ${idx}:`, {
-          id: q.id,
-          statement: q.statement?.substring(0, 50),
-          hasId: !!q.id,
-          idType: typeof q.id,
-        });
-      });
+      // TRATAMENTO ROBUSTO DE ID
+      const validQuestions = existingQuestions.map((q: any) => ({
+          ...q,
+          // Garante que o ID existe, pegando 'id' ou '_id' e convertendo pra string
+          id: String(q.id || q._id || "") 
+      })).filter(q => q.id !== "" && q.id !== "undefined");
 
-      // Garantir que todas as questões têm ID válido
-      const validQuestions = existingQuestions.filter((q) => {
-        const hasValidId =
-          q.id && q.id !== "undefined" && q.id !== undefined && q.id !== "";
-        if (!hasValidId) {
-          console.warn("Questão sem ID válido:", q);
-        }
-        return hasValidId;
-      });
-
-      console.log("Questões válidas após filtro:", validQuestions.length);
+      console.log(`✅ ${validQuestions.length} questões válidas carregadas.`);
       setQuestions(validQuestions);
-      // Resetar seleção ao carregar novas questões
-      setSelectedQuestionIds(new Set());
+      
     } catch (error) {
       console.error("Erro ao carregar questões:", error);
+      Alert.alert("Erro", "Falha ao carregar lista de questões.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const toggleQuestionSelection = (questionId: string) => {
-    if (!questionId || questionId === "undefined") {
-      console.warn("Tentando selecionar questão sem ID válido:", questionId);
-      return;
-    }
     const newSelected = new Set(selectedQuestionIds);
     if (newSelected.has(questionId)) {
       newSelected.delete(questionId);
-      console.log("Questão desmarcada:", questionId);
     } else {
       newSelected.add(questionId);
-      console.log("Questão marcada:", questionId);
     }
-    console.log("Total selecionado:", newSelected.size);
     setSelectedQuestionIds(newSelected);
   };
 
   const handleCategoryPress = (categoryId: number) => {
-    setSelectedCategory(categoryId);
+    // Se clicar na mesma, desmarca (opcional)
+    if (selectedCategory === categoryId) setSelectedCategory(null);
+    else setSelectedCategory(categoryId);
   };
-
-  const router = useRouter();
 
   const handleBack = () => {
     router.push("/(tabs)/quizzes");
   };
 
   const handleCriarPergunta = () => {
-    if (!selectedCategory) {
-      alert("Selecione uma categoria primeiro!");
-      return;
-    }
-
-    const selectedCategoryName =
-      categories.find((cat) => cat.id === selectedCategory)?.name || "Futebol";
+    const categoryName = selectedCategory 
+        ? categories.find((cat) => cat.id === selectedCategory)?.name 
+        : "Futebol";
 
     router.push({
       pathname: "/(tabs)/criarpergunta",
-      params: {
-        category: selectedCategoryName,
-        categoryId: selectedCategory.toString(),
-      },
+      params: { category: categoryName },
     });
   };
 
@@ -182,23 +170,10 @@ export default function CreateQuiz() {
       return;
     }
 
-    if (selectedQuestionIds.size === 0) {
-      Alert.alert("Atenção", "Selecione pelo menos uma questão!");
-      return;
-    }
-
     try {
       setLoading(true);
 
-      // Filtrar IDs válidos
-      const validQuestionIds = Array.from(selectedQuestionIds).filter(
-        (id) => id && id !== "undefined" && id !== undefined
-      );
-
-      if (validQuestionIds.length === 0) {
-        Alert.alert("Atenção", "Selecione pelo menos uma questão válida!");
-        return;
-      }
+      const validQuestionIds = Array.from(selectedQuestionIds);
 
       const quizData: QuizCreate = {
         title: newQuiz.title,
@@ -206,7 +181,6 @@ export default function CreateQuiz() {
         question_ids: validQuestionIds,
       };
 
-      console.log("Criando quiz:", quizData);
       await quizService.createQuiz(quizData);
 
       setNewQuiz({ title: "", description: "" });
@@ -217,7 +191,6 @@ export default function CreateQuiz() {
         { text: "OK", onPress: () => router.push("/(tabs)/quizzes") },
       ]);
     } catch (error: any) {
-      console.error("Erro ao criar quiz:", error);
       Alert.alert("Erro", `Não foi possível criar o quiz: ${error.message}`);
     } finally {
       setLoading(false);
@@ -245,75 +218,65 @@ export default function CreateQuiz() {
         members: membersArray,
       };
 
-      console.log("Criando time:", teamData);
       await teamService.createTeam(teamData);
-
-      await loadTeams();
+      await loadTeams(); // Recarrega a lista
 
       setNewTeam({ name: "", country: "", members: "" });
       setModalVisible(false);
 
       Alert.alert("Sucesso", "Time criado com sucesso!");
     } catch (error: any) {
-      console.error("Erro ao criar time:", error);
       Alert.alert("Erro", `Não foi possível criar o time: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
+  // Filtra as questões visualmente baseado na categoria selecionada
+  const filteredQuestions = selectedCategory 
+    ? questions.filter(q => q.topic === categories.find(c => c.id === selectedCategory)?.name)
+    : questions;
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
+        
+        {/* HEADER */}
         <View style={styles.logoContent}>
-          <Image
-            source={require("../../assets/images/LogoBG.png")}
-            style={styles.loginLogo}
-          />
+          <Image source={require("../../assets/images/LogoBG.png")} style={styles.loginLogo} />
           <Text style={styles.title}>FUTQUIZ</Text>
         </View>
 
         <View style={styles.headerBar}>
           <TouchableOpacity onPress={handleBack}>
-            <Image
-              source={require("../../assets/images/arrow-left.png")}
-              style={styles.editIcon}
-            />
+            <Image source={require("../../assets/images/arrow-left.png")} style={styles.editIcon} />
           </TouchableOpacity>
           <Text style={styles.subtitle}>Criar quiz</Text>
           {userRole === "admin" && (
             <TouchableOpacity onPress={handleCriarPergunta}>
-              <Image
-                source={require("../../assets/images/plus-square.png")}
-                style={styles.editIcon}
-              />
+              <Image source={require("../../assets/images/plus-square.png")} style={styles.editIcon} />
             </TouchableOpacity>
           )}
         </View>
 
         <ScrollView style={styles.scrollcontent}>
+          
+          {/* CATEGORIAS */}
           <View style={styles.categoriesSection}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.horizontalScroll}
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
               <View style={styles.categoriesContainer}>
                 {categories.map((category) => (
                   <TouchableOpacity
                     key={category.id}
                     style={[
                       styles.categoryCard,
-                      selectedCategory === category.id &&
-                        styles.categoryCardSelected,
+                      selectedCategory === category.id && styles.categoryCardSelected,
                     ]}
                     onPress={() => handleCategoryPress(category.id)}
                   >
-                    <Text
-                      style={[
+                    <Text style={[
                         styles.categoryTitle,
-                        selectedCategory === category.id &&
-                          styles.categoryTitleSelected,
+                        selectedCategory === category.id && styles.categoryTitleSelected,
                       ]}
                     >
                       {category.name}
@@ -324,27 +287,29 @@ export default function CreateQuiz() {
             </ScrollView>
           </View>
 
+          {/* LISTA DE QUESTÕES */}
           <View style={styles.questionsSection}>
             <Text style={styles.sectionTitle}>
-              Selecione as questões para o quiz:
+              Selecione as questões ({selectedQuestionIds.size}):
             </Text>
-            {questions.length === 0 ? (
+            
+            {loading && questions.length === 0 ? (
+                <ActivityIndicator size="large" color="#24bf94" style={{marginTop: 20}} />
+            ) : filteredQuestions.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>
-                  Nenhuma questão criada ainda.{"\n"}
-                  Crie questões primeiro antes de criar um quiz!
+                  {selectedCategory 
+                    ? "Nenhuma questão encontrada nesta categoria." 
+                    : "Nenhuma questão criada ainda.\nClique no + para criar!"}
                 </Text>
               </View>
             ) : (
-              questions
-                .filter((question) => question.id) // Filtrar questões sem ID válido
-                .map((question) => (
+              filteredQuestions.map((question) => (
                   <TouchableOpacity
                     key={question.id}
                     style={[
                       styles.questionContainer,
-                      selectedQuestionIds.has(question.id) &&
-                        styles.questionContainerSelected,
+                      selectedQuestionIds.has(question.id) && styles.questionContainerSelected,
                     ]}
                     onPress={() => toggleQuestionSelection(question.id)}
                   >
@@ -354,9 +319,7 @@ export default function CreateQuiz() {
                       )}
                     </View>
                     <View style={styles.questionContent}>
-                      <Text style={styles.questionText}>
-                        {question.statement}
-                      </Text>
+                      <Text style={styles.questionText}>{question.statement}</Text>
                       <Text style={styles.questionTopic}>{question.topic}</Text>
                     </View>
                   </TouchableOpacity>
@@ -364,31 +327,31 @@ export default function CreateQuiz() {
             )}
           </View>
 
+          {/* BOTÕES DE AÇÃO */}
           {userRole === "admin" && (
-            <>
-              <TouchableOpacity
-                style={styles.avancarButton}
-                onPress={handleAvançar}
-              >
+            <View style={{ marginBottom: 40 }}>
+              <TouchableOpacity style={styles.avancarButton} onPress={handleAvançar}>
                 <Text style={styles.avancarText}>Criar Time</Text>
               </TouchableOpacity>
+              
               <TouchableOpacity
                 style={[
                   styles.avancarButton,
-                  selectedQuestionIds.size === 0 && { opacity: 0.5 },
+                  selectedQuestionIds.size === 0 && { opacity: 0.5, backgroundColor: '#999' },
                 ]}
                 onPress={handleCreateQuiz}
                 disabled={selectedQuestionIds.size === 0}
               >
                 <Text style={styles.avancarText}>
-                  Criar Quiz ({selectedQuestionIds.size} questões selecionadas)
+                  Criar Quiz ({selectedQuestionIds.size})
                 </Text>
               </TouchableOpacity>
-            </>
+            </View>
           )}
         </ScrollView>
       </View>
 
+      {/* MODAL CRIAR TIME */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -405,7 +368,6 @@ export default function CreateQuiz() {
                 style={styles.textInput}
                 value={newTeam.name}
                 onChangeText={(text) => setNewTeam({ ...newTeam, name: text })}
-                editable={!loading}
               />
             </View>
 
@@ -414,10 +376,7 @@ export default function CreateQuiz() {
               <TextInput
                 style={styles.textInput}
                 value={newTeam.country}
-                onChangeText={(text) =>
-                  setNewTeam({ ...newTeam, country: text })
-                }
-                editable={!loading}
+                onChangeText={(text) => setNewTeam({ ...newTeam, country: text })}
               />
             </View>
 
@@ -426,14 +385,10 @@ export default function CreateQuiz() {
               <TextInput
                 style={styles.textInput}
                 value={newTeam.members}
-                onChangeText={(text) =>
-                  setNewTeam({ ...newTeam, members: text })
-                }
-                editable={!loading}
+                onChangeText={(text) => setNewTeam({ ...newTeam, members: text })}
+                keyboardType="numeric"
               />
-              <Text style={styles.helperText}>
-                IDs numéricos dos usuários, separados por vírgula
-              </Text>
+              <Text style={styles.helperText}>IDs separados por vírgula</Text>
             </View>
 
             <View style={styles.modalButtons}>
@@ -449,15 +404,14 @@ export default function CreateQuiz() {
                 onPress={handleCreateTeam}
                 disabled={loading}
               >
-                <Text style={styles.confirmButtonText}>
-                  {loading ? "Criando..." : "Criar Time"}
-                </Text>
+                <Text style={styles.confirmButtonText}>{loading ? "..." : "Criar"}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
+      {/* MODAL CRIAR QUIZ */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -466,7 +420,7 @@ export default function CreateQuiz() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Criar Novo Quiz</Text>
+            <Text style={styles.modalTitle}>Finalizar Quiz</Text>
 
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Título do Quiz *</Text>
@@ -474,31 +428,23 @@ export default function CreateQuiz() {
                 style={styles.textInput}
                 value={newQuiz.title}
                 onChangeText={(text) => setNewQuiz({ ...newQuiz, title: text })}
-                placeholder="Ex: Quiz Brasileirão 2011"
-                editable={!loading}
+                placeholder="Ex: Quiz da Rodada"
               />
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Descrição (opcional)</Text>
               <TextInput
-                style={[
-                  styles.textInput,
-                  { minHeight: 80, textAlignVertical: "top" },
-                ]}
+                style={[styles.textInput, { minHeight: 80, textAlignVertical: "top" }]}
                 value={newQuiz.description}
-                onChangeText={(text) =>
-                  setNewQuiz({ ...newQuiz, description: text })
-                }
-                placeholder="Descreva o quiz..."
+                onChangeText={(text) => setNewQuiz({ ...newQuiz, description: text })}
                 multiline
                 numberOfLines={4}
-                editable={!loading}
               />
             </View>
 
             <Text style={styles.helperText}>
-              {selectedQuestionIds.size} questão(ões) selecionada(s)
+              {selectedQuestionIds.size} questões vinculadas.
             </Text>
 
             <View style={styles.modalButtons}>
@@ -514,9 +460,7 @@ export default function CreateQuiz() {
                 onPress={handleSaveQuiz}
                 disabled={loading}
               >
-                <Text style={styles.confirmButtonText}>
-                  {loading ? "Criando..." : "Criar Quiz"}
-                </Text>
+                <Text style={styles.confirmButtonText}>{loading ? "..." : "Salvar Quiz"}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -527,305 +471,47 @@ export default function CreateQuiz() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f1f1f1",
-    alignItems: "center",
-  },
-  content: {
-    flex: 1,
-    width: "100%",
-    alignItems: "center",
-  },
-  logoContent: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 60,
-  },
-  loginLogo: {
-    width: 35,
-    height: 35,
-    marginRight: 10,
-  },
-  title: {
-    fontFamily: "Rubik",
-    fontSize: 25,
-    fontWeight: 500,
-  },
-  headerBar: {
-    width: "90%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 25,
-  },
-  subtitle: {
-    fontFamily: "Rubik",
-    fontSize: 24,
-    fontWeight: 500,
-  },
-  editIcon: {
-    width: 25,
-    height: 25,
-  },
-  scrollcontent: {
-    width: "100%",
-    marginTop: 10,
-  },
-  categoriesSection: {
-    width: "90%",
-    alignSelf: "center",
-    marginBottom: 30,
-  },
-  horizontalScroll: {
-    width: "100%",
-  },
-  categoriesContainer: {
-    flexDirection: "row",
-    paddingRight: 20,
-  },
-  categoryCard: {
-    width: 127,
-    height: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#a6a6a6",
-    borderRadius: 12,
-    padding: 15,
-    marginRight: 15,
-  },
-  categoryCardSelected: {
-    backgroundColor: "#24bf94",
-  },
-  categoryTitle: {
-    fontFamily: "Rubik",
-    fontSize: 16,
-    fontWeight: "500",
-    textAlign: "center",
-    color: "#000",
-  },
-  categoryTitleSelected: {
-    color: "#FFF",
-  },
-  teamsSection: {
-    width: "90%",
-    alignSelf: "center",
-    flexDirection: "column",
-    gap: 18,
-    justifyContent: "space-between",
-    marginBottom: 30,
-  },
-  questionsSection: {
-    width: "90%",
-    alignSelf: "center",
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontFamily: "Rubik",
-    fontSize: 18,
-    fontWeight: "500",
-    marginBottom: 15,
-    color: "#333",
-  },
-  questionContainer: {
-    flexDirection: "row",
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#E5E5E5",
-  },
-  questionContainerSelected: {
-    borderColor: "#24bf94",
-    backgroundColor: "#F0FDF9",
-  },
-  questionCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#24bf94",
-    backgroundColor: "#FFF",
-    marginRight: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkmark: {
-    color: "#24bf94",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  questionContent: {
-    flex: 1,
-  },
-  questionText: {
-    fontFamily: "Rubik",
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: 5,
-    color: "#333",
-  },
-  questionTopic: {
-    fontFamily: "Rubik",
-    fontSize: 14,
-    color: "#777",
-  },
-  teamContainer: {
-    width: "100%",
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  teamTitle: {
-    fontFamily: "Rubik",
-    fontSize: 18,
-    fontWeight: "500",
-    marginBottom: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: "black",
-    paddingBottom: 5,
-  },
-  teamMembers: {
-    fontFamily: "Rubik",
-    fontSize: 14,
-    color: "#777",
-    marginBottom: 5,
-  },
-  teamId: {
-    fontFamily: "Rubik",
-    fontSize: 12,
-    color: "#999",
-  },
-  emptyState: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 40,
-    alignItems: "center",
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  emptyStateText: {
-    fontFamily: "Rubik",
-    fontSize: 16,
-    color: "#777",
-    textAlign: "center",
-    lineHeight: 24,
-  },
-  avancarButton: {
-    width: "40%",
-    alignSelf: "center",
-    backgroundColor: "#24bf94",
-    borderRadius: 12,
-    padding: 15,
-    alignItems: "center",
-    marginBottom: 30,
-  },
-  avancarText: {
-    fontFamily: "Rubik",
-    fontSize: 18,
-    fontWeight: "500",
-    color: "#FFF",
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  modalContent: {
-    width: "85%",
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 25,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontFamily: "Rubik",
-    fontSize: 20,
-    fontWeight: "500",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  inputContainer: {
-    marginBottom: 15,
-  },
-  inputLabel: {
-    fontFamily: "Rubik",
-    fontSize: 14,
-    fontWeight: "500",
-    marginBottom: 8,
-    color: "#333",
-  },
-  textInput: {
-    backgroundColor: "#F8F8F8",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    borderRadius: 8,
-    padding: 12,
-    fontFamily: "Rubik",
-    fontSize: 16,
-  },
-  helperText: {
-    fontFamily: "Rubik",
-    fontSize: 12,
-    color: "#777",
-    marginTop: 4,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  cancelButton: {
-    backgroundColor: "#ccc",
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
-    flex: 1,
-    marginRight: 10,
-  },
-  cancelButtonText: {
-    fontFamily: "Rubik",
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "500",
-  },
-  confirmButton: {
-    backgroundColor: "#24bf94",
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
-    flex: 1,
-    marginLeft: 10,
-  },
-  confirmButtonText: {
-    fontFamily: "Rubik",
-    fontSize: 16,
-    color: "#FFF",
-    fontWeight: "500",
-  },
+  container: { flex: 1, backgroundColor: "#f1f1f1", alignItems: "center" },
+  content: { flex: 1, width: "100%", alignItems: "center" },
+  logoContent: { flexDirection: "row", justifyContent: "center", marginTop: 60 },
+  loginLogo: { width: 35, height: 35, marginRight: 10 },
+  title: { fontFamily: "Rubik", fontSize: 25, fontWeight: "500" },
+  headerBar: { width: "90%", flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 25 },
+  subtitle: { fontFamily: "Rubik", fontSize: 24, fontWeight: "500" },
+  editIcon: { width: 25, height: 25 },
+  scrollcontent: { width: "100%", marginTop: 10 },
+  categoriesSection: { width: "90%", alignSelf: "center", marginBottom: 20 },
+  horizontalScroll: { width: "100%" },
+  categoriesContainer: { flexDirection: "row", paddingRight: 20 },
+  categoryCard: { width: 120, height: 45, alignItems: "center", justifyContent: "center", backgroundColor: "#a6a6a6", borderRadius: 12, marginRight: 10 },
+  categoryCardSelected: { backgroundColor: "#24bf94" },
+  categoryTitle: { fontFamily: "Rubik", fontSize: 14, fontWeight: "500", color: "#000" },
+  categoryTitleSelected: { color: "#FFF" },
+  questionsSection: { width: "90%", alignSelf: "center", marginBottom: 30 },
+  sectionTitle: { fontFamily: "Rubik", fontSize: 18, fontWeight: "500", marginBottom: 15, color: "#333" },
+  questionContainer: { flexDirection: "row", backgroundColor: "#FFF", borderRadius: 12, padding: 15, marginBottom: 10, alignItems: "center", borderWidth: 2, borderColor: "#E5E5E5" },
+  questionContainerSelected: { borderColor: "#24bf94", backgroundColor: "#F0FDF9" },
+  questionCheckbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: "#24bf94", backgroundColor: "#FFF", marginRight: 12, alignItems: "center", justifyContent: "center" },
+  checkmark: { color: "#24bf94", fontSize: 16, fontWeight: "bold" },
+  questionContent: { flex: 1 },
+  questionText: { fontFamily: "Rubik", fontSize: 16, fontWeight: "500", marginBottom: 5, color: "#333" },
+  questionTopic: { fontFamily: "Rubik", fontSize: 14, color: "#777" },
+  emptyState: { backgroundColor: "#FFF", borderRadius: 12, padding: 40, alignItems: "center", marginBottom: 20, elevation: 3 },
+  emptyStateText: { fontFamily: "Rubik", fontSize: 16, color: "#777", textAlign: "center", lineHeight: 24 },
+  avancarButton: { width: "90%", alignSelf: "center", backgroundColor: "#24bf94", borderRadius: 12, padding: 15, alignItems: "center", marginBottom: 15 },
+  avancarText: { fontFamily: "Rubik", fontSize: 18, fontWeight: "500", color: "#FFF" },
+  
+  // Modal Styles
+  modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.5)" },
+  modalContent: { width: "85%", backgroundColor: "white", borderRadius: 12, padding: 25, elevation: 5 },
+  modalTitle: { fontFamily: "Rubik", fontSize: 20, fontWeight: "500", marginBottom: 20, textAlign: "center" },
+  inputContainer: { marginBottom: 15 },
+  inputLabel: { fontFamily: "Rubik", fontSize: 14, fontWeight: "500", marginBottom: 8, color: "#333" },
+  textInput: { backgroundColor: "#F8F8F8", borderWidth: 1, borderColor: "#E5E5E5", borderRadius: 8, padding: 12, fontFamily: "Rubik", fontSize: 16 },
+  helperText: { fontFamily: "Rubik", fontSize: 12, color: "#777", marginTop: 4, marginBottom: 10, textAlign: 'center' },
+  modalButtons: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
+  cancelButton: { backgroundColor: "#ccc", borderRadius: 8, padding: 12, alignItems: "center", flex: 1, marginRight: 10 },
+  cancelButtonText: { fontFamily: "Rubik", fontSize: 16, color: "#333", fontWeight: "500" },
+  confirmButton: { backgroundColor: "#24bf94", borderRadius: 8, padding: 12, alignItems: "center", flex: 1, marginLeft: 10 },
+  confirmButtonText: { fontFamily: "Rubik", fontSize: 16, color: "#FFF", fontWeight: "500" },
 });

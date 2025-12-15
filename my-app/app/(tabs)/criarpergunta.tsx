@@ -130,7 +130,7 @@ export default function CreateQuestions() {
         team_id: isTeamQuiz ? selectedTeamId : null,
       };
 
-      await questionService.createFullQuestion(payload);
+      await questionService.createQuestion(payload);
 
       Alert.alert("Sucesso", "Pergunta criada!");
 

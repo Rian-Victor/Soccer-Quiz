@@ -1,37 +1,24 @@
 import axios from "axios";
 import { appSettings } from "../Configs/settings";
 
-export interface LoginRequest {
+export interface LoginRequest { email: string; password: string; }
+export interface LoginResponse { access_token: string; refresh_token: string; token_type: string; expires_at: string; user_id: number; role: string; }
+export interface LogoutRequest { refresh_token: string; }
+export interface LogoutResponse { message: string; }
+export interface RefreshTokenRequest { refresh_token: string; }
+export interface RefreshTokenResponse { access_token: string; refresh_token: string; token_type: string; expires_at: string; }
+
+export interface PasswordResetRequest {
   email: string;
-  password: string;
 }
-
-export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_at: string;
-  user_id: number;
-  role: string;
-}
-
-export interface LogoutRequest {
-  refresh_token: string;
-}
-
-export interface LogoutResponse {
+export interface PasswordResetResponse {
   message: string;
 }
 
-export interface RefreshTokenRequest {
-  refresh_token: string;
-}
-
-export interface RefreshTokenResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_at: string;
+export interface ConfirmResetRequest {
+  token: string;
+  new_password: string;
+  email: string;
 }
 
 // SRP: authService encapsula apenas chamadas relacionadas à autenticação.
@@ -42,6 +29,7 @@ const authAxios = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 10000, // 10 segundos
 });
 
 // SRP: authService encapsula apenas chamadas relacionadas à autenticação.
@@ -49,6 +37,7 @@ const authAxios = axios.create({
 export const authService = {
   async login(loginData: LoginRequest): Promise<LoginResponse> {
     console.log("Fazendo login...");
+    console.log("URL:", `${appSettings.URL.backend.api}/auth/login`);
 
     try {
       const response = await authAxios.post<LoginResponse>(
@@ -58,8 +47,16 @@ export const authService = {
       console.log("Status:", response.status);
       return response.data;
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.detail || error.message || "Erro ao fazer login";
+      let errorMessage;
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Tempo de conexão esgotado. Verifique sua conexão de rede e se o servidor está acessível.";
+      } else {
+        errorMessage =
+          error.response?.data?.detail ||
+          error.message ||
+          "Erro ao fazer login";
+      }
       console.error("Erro:", errorMessage);
       throw new Error(
         `Erro ao fazer login: ${
@@ -80,8 +77,16 @@ export const authService = {
       console.log("Status:", response.status);
       return response.data;
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.detail || error.message || "Erro ao fazer logout";
+      let errorMessage;
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Tempo de conexão esgotado. Verifique sua conexão de rede e se o servidor está acessível.";
+      } else {
+        errorMessage =
+          error.response?.data?.detail ||
+          error.message ||
+          "Erro ao fazer logout";
+      }
       console.error("Erro:", errorMessage);
       throw new Error(
         `Erro ao fazer logout: ${
@@ -89,8 +94,6 @@ export const authService = {
         } - ${errorMessage}`
       );
     }
-
-    return await response.json();
   },
 
   async refreshToken(
@@ -106,16 +109,51 @@ export const authService = {
       console.log("Status:", response.status);
       return response.data;
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.detail ||
-        error.message ||
-        "Erro ao renovar token";
+      let errorMessage;
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Tempo de conexão esgotado. Verifique sua conexão de rede e se o servidor está acessível.";
+      } else {
+        errorMessage =
+          error.response?.data?.detail ||
+          error.message ||
+          "Erro ao renovar token";
+      }
       console.error("Erro:", errorMessage);
       throw new Error(
         `Erro ao renovar token: ${
           error.response?.status || "unknown"
         } - ${errorMessage}`
       );
+    }
+  },
+
+async requestPasswordReset(
+    resetData: PasswordResetRequest
+  ): Promise<PasswordResetResponse> {
+    console.log("Solicitando recuperação de senha para:", resetData.email);
+
+    try {
+      const response = await authAxios.post<PasswordResetResponse>(
+        "/users/password/forgot",
+        resetData
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  async confirmPasswordReset(data: ConfirmResetRequest): Promise<any> {
+    console.log("Enviando token e nova senha...");
+    try {
+      const response = await authAxios.post("/users/password/reset", data);
+
+      return response.data;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || error.message || "Erro ao redefinir a senha";
+      console.error("Erro no reset:", errorMessage);
+      throw new Error(`Erro: ${error.response?.status || "unknown"} - ${errorMessage}`);
     }
   },
 };

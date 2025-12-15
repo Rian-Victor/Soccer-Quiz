@@ -1,7 +1,5 @@
 import { getAxiosInstance } from "../app/hooks/useAxios";
 
-// ==================== INTERFACES ====================
-
 export interface QuestionCreate {
   statement: string;
   topic: string;
@@ -60,7 +58,6 @@ export interface QuizResponse {
   created_by: number;
 }
 
-// Interfaces para Gameplay
 export interface StartQuizRequest {
   quiz_type?: "general" | "team";
   team_id?: string;
@@ -122,8 +119,6 @@ export interface QuestionWithAnswers {
   difficulty: string;
   answers: AnswerResponse[];
 }
-
-// ==================== SERVICES ====================
 
 // SRP: answerService lida apenas com os endpoints de respostas.
 export const answerService = {
@@ -524,11 +519,9 @@ export const gameplayService = {
   },
 };
 
-// Compatibilidade: quizGameService (deprecated - usar gameplayService)
-// Mantido para compatibilidade com código antigo
+
 export const quizGameService = {
   async getHeaders() {
-    // Headers são gerenciados automaticamente pelo axios interceptor
     return {};
   },
 

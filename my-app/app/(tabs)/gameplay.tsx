@@ -28,7 +28,7 @@ export default function Gameplay() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [quizFinished, setQuizFinished] = useState(false);
-  const [timer, setTimer] = useState(0); // Tempo total em segundos
+  const [timer, setTimer] = useState(0);  
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [result, setResult] = useState<{
     totalPoints: number;
@@ -37,7 +37,6 @@ export default function Gameplay() {
     totalTime: number;
   } | null>(null);
   
-  // Armazenar respostas localmente antes de submeter
   const [localAnswers, setLocalAnswers] = useState<Map<string, {
     questionId: string;
     answerId: string;
@@ -45,7 +44,6 @@ export default function Gameplay() {
     timestamp: number;
   }>>(new Map());
   
-  // Índice local para navegação (pode ser diferente do backend se houver respostas já submetidas)
   const [localQuestionIndex, setLocalQuestionIndex] = useState<number>(0);
 
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -61,13 +59,11 @@ export default function Gameplay() {
 
   useEffect(() => {
     if (currentQuiz && !quizFinished) {
-      // Usar índice local para navegação
       loadCurrentQuestionByIndex(localQuestionIndex);
     }
   }, [localQuestionIndex, quizFinished, currentQuiz]);
   
   useEffect(() => {
-    // Quando quiz é carregado, inicializar índice local
     if (currentQuiz) {
       setLocalQuestionIndex(currentQuiz.current_question_index);
     }
@@ -80,10 +76,8 @@ export default function Gameplay() {
     }
   }, [currentQuestion]);
 
-  // Timer que atualiza a cada segundo
   useEffect(() => {
     if (!quizFinished && currentQuiz && !loading) {
-      // Iniciar timer apenas quando quiz estiver carregado
       timerIntervalRef.current = setInterval(() => {
         setTimer((prev) => prev + 1);
       }, 1000);
@@ -104,34 +98,28 @@ export default function Gameplay() {
     try {
       setLoading(true);
       
-      // Primeiro, tentar buscar quiz ativo
       try {
         const activeQuiz = await gameplayService.getCurrentQuiz();
         if (activeQuiz) {
           console.log("Quiz ativo encontrado, continuando de onde parou");
           setCurrentQuiz(activeQuiz);
-          // Carregar pergunta atual
           await loadCurrentQuestion();
           return;
         }
       } catch (error: any) {
-        // Se retornar 404, não há quiz ativo, continuar para iniciar novo
         if (error.is404 || (error.message && error.message.includes("404"))) {
           console.log("Nenhum quiz ativo encontrado, iniciando novo quiz");
         } else {
           console.warn("Erro ao verificar quiz ativo:", error);
-          // Continuar para tentar iniciar novo quiz
         }
       }
       
-      // Se não há quiz ativo, iniciar novo
       const response = await gameplayService.startQuiz(quizId);
       setCurrentQuiz(response.quiz);
       setQuestionStartTime(Date.now());
     } catch (error: any) {
       console.error("Erro ao iniciar quiz:", error);
       
-      // Se o erro for "quiz ativo", oferecer opção de continuar
       if (error.message && error.message.includes("quiz ativo")) {
         Alert.alert(
           "Quiz Ativo",
@@ -182,7 +170,6 @@ export default function Gameplay() {
     }
 
     if (questionIndex >= currentQuiz.questions.length) {
-      // Quiz finalizado
       console.log("Quiz finalizado - todas as perguntas foram respondidas");
       finishQuiz();
       return;
@@ -201,7 +188,6 @@ export default function Gameplay() {
       setCurrentQuestion(question);
       setQuestionStartTime(Date.now());
       
-      // Verificar se já temos resposta local para esta pergunta
       const existingAnswer = localAnswers.get(questionId);
       if (existingAnswer) {
         setSelectedAnswerId(existingAnswer.answerId);
@@ -234,7 +220,6 @@ export default function Gameplay() {
       return;
     }
 
-    // Armazenar resposta localmente (não submeter ainda)
     const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
     
     const newAnswers = new Map(localAnswers);
@@ -253,15 +238,12 @@ export default function Gameplay() {
       totalArmazenadas: newAnswers.size,
     });
 
-    // Avançar para próxima pergunta usando índice local
     const nextIndex = localQuestionIndex + 1;
     
     if (nextIndex >= currentQuiz.questions.length) {
-      // Última pergunta respondida, finalizar quiz
       console.log("Última pergunta respondida, finalizando quiz...");
       finishQuiz();
     } else {
-      // Avançar para próxima pergunta
       setLocalQuestionIndex(nextIndex);
       setSelectedAnswerId(null);
     }
@@ -281,7 +263,6 @@ export default function Gameplay() {
           onPress: async () => {
             if (!currentQuiz) return;
             try {
-              // Submeter respostas antes de abandonar
               if (localAnswers.size > 0) {
                 await submitAllAnswers();
               }
@@ -325,15 +306,11 @@ export default function Gameplay() {
       setSubmitting(true);
       console.log(`Submetendo ${localAnswers.size} respostas...`);
 
-      // Obter índice inicial (pode haver respostas já submetidas se quiz foi retomado)
       const startIndex = currentQuiz.current_question_index - localAnswers.size;
       const actualStartIndex = Math.max(0, startIndex);
 
-      // Submeter respostas em ordem (seguindo a ordem das perguntas do quiz)
       const answersArray = Array.from(localAnswers.values());
       
-      // Ordenar respostas pela ordem das perguntas no quiz
-      // Começar do índice atual para evitar re-submeter respostas já enviadas
       const questionsToSubmit = currentQuiz.questions.slice(actualStartIndex);
       const orderedAnswers = questionsToSubmit
         .map((questionId) => answersArray.find((a) => a.questionId === questionId))
@@ -346,13 +323,11 @@ export default function Gameplay() {
 
       console.log(`Submetendo ${orderedAnswers.length} respostas a partir do índice ${actualStartIndex}`);
 
-      // Submeter cada resposta em ordem sequencial
       let finalResponse: SubmitAnswerResponse | null = null;
       let submittedCount = 0;
       
       for (const answer of orderedAnswers) {
         try {
-          // Pequeno delay entre submissões para garantir ordem
           if (submittedCount > 0) {
             await new Promise((resolve) => setTimeout(resolve, 100));
           }
@@ -367,7 +342,6 @@ export default function Gameplay() {
           submittedCount++;
           console.log(`Resposta ${answer.questionId} submetida com sucesso (${submittedCount}/${orderedAnswers.length})`);
           
-          // Atualizar estado do quiz após cada submissão bem-sucedida
           if (currentQuiz) {
             const updatedQuiz: QuizSession = {
               ...currentQuiz,
@@ -380,12 +354,10 @@ export default function Gameplay() {
           }
         } catch (error: any) {
           console.error(`Erro ao submeter resposta ${answer.questionId}:`, error);
-          // Se for erro de "fora de ordem", pode ser que já foi submetida, continuar
           if (error.message && error.message.includes("fora de ordem")) {
             console.warn(`Resposta ${answer.questionId} pode já ter sido submetida, continuando...`);
             continue;
           }
-          // Para outros erros, continuar tentando as outras respostas
         }
       }
 
@@ -408,7 +380,6 @@ export default function Gameplay() {
     }
 
     try {
-      // Submeter todas as respostas antes de finalizar
       const finalResponse = await submitAllAnswers();
       
       if (finalResponse) {
@@ -419,7 +390,6 @@ export default function Gameplay() {
           totalTime: timer,
         });
       } else {
-        // Se não conseguiu submeter, usar valores locais (fallback)
         setResult({
           totalPoints: 0,
           correctAnswers: 0,
@@ -515,7 +485,6 @@ export default function Gameplay() {
     );
   }
 
-  // Usar índice local para exibição
   const currentQuestionNumber = localQuestionIndex + 1;
   const totalQuestions = currentQuiz.questions.length;
   const progress = (currentQuestionNumber / totalQuestions) * 100;

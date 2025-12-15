@@ -34,7 +34,6 @@ export default function TabsLayout() {
     { icon: ["person-outline", "person"], route: "perfil", adminOnly: false },
   ] as const;
 
-  // Filtrar abas baseado no role do usuário
   const tabs = allTabs.filter(tab => !tab.adminOnly || userRole === "admin");
 
   return (

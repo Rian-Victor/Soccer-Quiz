@@ -13,7 +13,6 @@ from app.dependencies import get_team_repo
 from app.dependencies import require_admin_role
 
 
-# ISP: este router atende só os endpoints de times, mantendo segregada a interface de perguntas e respostas.
 router = APIRouter()
 
 
@@ -111,4 +110,3 @@ async def delete_team(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Time com ID {team_id} não encontrado"
         )
-
