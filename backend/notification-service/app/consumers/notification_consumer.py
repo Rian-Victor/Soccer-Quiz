@@ -71,7 +71,7 @@ class NotificationConsumer:
                 durable=True
             )
 
-            await queue_quiz.bind(exchange, routing_key="quiz.created ")
+            await queue_quiz.bind(exchange, routing_key="quiz.created")
             await queue_quiz.consume(self._on_quiz_created_message)
 
             logger.info(f"✅ Fila [Novo Quiz] vinculada a 'quiz_events'{self.exchange_name}")

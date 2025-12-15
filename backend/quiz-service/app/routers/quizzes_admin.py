@@ -13,6 +13,9 @@ from app.repositories.quiz_repository import QuizRepository
 from app.repositories.question_repository import QuestionRepository
 from app.schemas.quiz_schemas import QuizCreate, QuizUpdate, QuizDB
 from app.dependencies import require_admin_role
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/quizzes-admin", tags=["quizzes-admin"])
 
@@ -52,12 +55,13 @@ async def create_quiz(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Questão com ID {question_id} não encontrada"
             )
+    current_time = datetime.now(timezone.utc)
     
     quiz_dict = {
         "title": quiz_data.title,
         "description": quiz_data.description,
         "question_ids": quiz_data.question_ids,
-        "created_at": datetime.now(timezone.utc),
+        "created_at": current_time,
         "created_by": user_id
     }
     
@@ -66,18 +70,19 @@ async def create_quiz(
     try:
         difficulty_level = getattr(quiz_data, "difficulty", "Geral")
 
-        await event_producer.publish_quiz_created({
-            "quiz_id": str(quiz.get("_id")), 
+        payload = {
+            "quiz_id": str(quiz.get("_id") or quiz.get("id")), 
             "title": quiz_data.title,
             "difficulty": difficulty_level,
-            "created_at": str(datetime.now())
-        })
-    
-        print(f"🚀 [SUCESSO] Evento de notificação enviado para o RabbitMQ!")
+            "created_at": current_time.isoformat()
+        }
+
+        await event_producer.publish_quiz_created(payload)
+
+        logger.info(f"🚀 [SUCESSO] Evento de notificação enviado para o RabbitMQ!")
         
     except Exception as e:
-        print(f"❌ [ERRO] Falha ao enviar notificação: {e}")
-
+        logger.error(f"❌ [ERRO] Falha ao enviar notificação: {e}")
 
     return QuizDB(**quiz)
 

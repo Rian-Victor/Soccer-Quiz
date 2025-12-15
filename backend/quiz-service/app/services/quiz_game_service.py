@@ -85,21 +85,21 @@ class QuizGameService:
         created_session = await self.session_repo.create(session)
         logger.info(f"✅ Quiz iniciado: user_id={user_id}, session_id={created_session.id}, quiz_id={quiz_id}")
 
-        try:
-            if self.event_producer:
-                await self.event_producer.publish_quiz_created(
-                    exchange_name="quiz_events",
-                    routing_key="game.started", 
-                    message={
-                        "event_type": "game_started",
-                        "session_id": str(created_session.id),
-                        "user_id": user_id,
-                        "quiz_id": quiz_id,
-                        "timestamp": str(datetime.utcnow())
-                    }
-                )
-        except Exception as e:
-            logger.error(f"Erro ao publicar game.started: {e}")
+        # try:
+        #     if self.event_producer:
+        #         await self.event_producer.publish_quiz_created(
+        #             exchange_name="quiz_events",
+        #             routing_key="game.started", 
+        #             message={
+        #                 "event_type": "game_started",
+        #                 "session_id": str(created_session.id),
+        #                 "user_id": user_id,
+        #                 "quiz_id": quiz_id,
+        #                 "timestamp": str(datetime.utcnow())
+        #             }
+        #         )
+        # except Exception as e:
+        #     logger.error(f"Erro ao publicar game.started: {e}")
        
 
         
@@ -190,24 +190,33 @@ class QuizGameService:
         
         # TODO: O ideal seria o front mandar o nome no token ou buscar no user-service.
         # Por enquanto, mandamos um genérico para não quebrar o Ranking.
-        user_display_name = f"Jogador #{session.user_id}"
-    
-        payload = {
-            "session_id": str(session.id),
-            "user_id": session.user_id, 
-            "user_name": user_display_name,
-            "total_points": session.total_points,
-            "total_time_seconds": session.total_time_seconds,
-            "finished_at": session.finished_at.isoformat(),
-            "correct_answers": session.correct_answers,
-            "total_questions": len(session.questions)
-        }
+       
         
         if self.event_producer:
-            await self.event_producer.publish_game_finished(payload)
+            
+            user_display_name = getattr(session, "user_name", f"Jogador #{session.user_id}")
+
+            payload = {
+                "user_id": session.user_id,
+                "user_name": user_display_name,
+                "total_points": session.total_points, 
+                "total_time_seconds": session.total_time_seconds,
+                "correct_answers": session.correct_answers,
+                "total_questions": len(session.questions),
+                "finished_at": session.finished_at.isoformat(),
+                #"session_id": str(session.id),
+                #"quiz_id": str(session.quiz_id) if session.quiz_id else None
+            }
+            
+            try:
+                await self.event_producer.publish_game_finished(payload)
+                logger.info(f"🚀 Evento game.finished enviado para RabbitMQ (User {session.user_id})")
+            except Exception as e:
+                # Se falhar o Rabbit, o jogo salvou no banco, mas o ranking desatualizou.
+                # Idealmente, teríamos um job de reprocessamento ou log de erro crítico.
+                logger.error(f"❌ ERRO CRÍTICO: Falha ao notificar Ranking Service: {e}")
         else:
             logger.error("❌ EventProducer não inicializado! Ranking não será atualizado.")
-
 
     async def get_current_quiz(self, user_id: int) -> Optional[dict]:
         session = await self.session_repo.get_active_by_user(user_id)

@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 
     await init_db()
 
-    await event_producer.connect()
+    await event_producer.connect(max_retries=10, retry_delay=5)
 
     print(f"🚀 Quiz Service iniciado na porta {settings.PORT}")
     print(f"📚 Documentação disponível em: http://localhost:{settings.PORT}/docs")

@@ -121,7 +121,6 @@ async def abandon_quiz(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-    # --- ROTA DE CONVITE (Adicionada por último) ---
 
 class InviteRequest(BaseModel):
     email: str
