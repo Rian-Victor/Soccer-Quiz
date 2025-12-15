@@ -53,9 +53,17 @@ async def validate_token(request: Request):
 # USER SERVICE
 # ==========================================
 
+@router.post("/users")
+async def create_user(request: Request):
+    """Roteia criação de usuário para user-service"""
+    print("[Gateway] POST /api/users - Criando usuário")
+    return await proxy_service.proxy_request("user", "", request)
+
+
 @router.api_route("/users/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 async def proxy_users(path: str, request: Request):
     """Roteia requisições para user-service"""
+    print(f"[Gateway] /api/users/{path} - Roteando para user-service")
     return await proxy_service.proxy_request("user", path, request)
 
 

@@ -21,6 +21,8 @@ PUBLIC_ROUTES = [
     "/api/password/forgot",  # Corrigido: gateway usa /api/password/forgot
     "/api/password/reset",  # Corrigido: gateway usa /api/password/reset
     "/api/password/validate-token",  # Corrigido: gateway usa /api/password/validate-token
+    "/api/users",  # Rota pública para criação de usuário (cadastro)
+    "/api/user",  # Alias para rota de usuário (cadastro)
     "/",
     "/health",
     "/docs",
