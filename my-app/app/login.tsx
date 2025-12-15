@@ -1,10 +1,10 @@
-import {StyleSheet, View, Image, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert} from "react-native";
+import { StyleSheet, View, Image, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { authService } from "../services/authApi";
 
-export default function Login(){
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,7 +34,7 @@ export default function Login(){
       await AsyncStorage.setItem("expires_at", response.expires_at);
 
       console.log("Login bem-sucedido! User ID:", response.user_id);
-      
+
       router.replace("/(tabs)/home");
     } catch (err: any) {
       console.error("Erro no login:", err);
@@ -46,129 +46,133 @@ export default function Login(){
     }
   };
 
-  return(
+  return (
     <View style={styles.container}>
       <View style={styles.content}>
-              <View style={styles.logoContent}>
-                  <Image source={require('../assets/images/LogoBG.png')} style={styles.loginLogo}></Image>
-                  <Text style={styles.title}>FUTQUIZ</Text>
-              </View>
-              <View style={styles.inputContent}>
-                  <Text style={styles.inputTitle}>E-mail</Text>
-                  <TextInput
-                      style={styles.input}
-                      placeholder="Digite seu e-mail"
-                      placeholderTextColor="#A9A9A9"
-                      value={email}
-                      onChangeText={setEmail}
-                      autoCapitalize="none"
-                      keyboardType="email-address"
-                      editable={!loading}
-                  />
+        <View style={styles.logoContent}>
+          <Image source={require('../assets/images/LogoBG.png')} style={styles.loginLogo}></Image>
+          <Text style={styles.title}>FUTQUIZ</Text>
+        </View>
+        <View style={styles.inputContent}>
+          <Text style={styles.inputTitle}>E-mail</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Digite seu e-mail"
+            placeholderTextColor="#A9A9A9"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            editable={!loading}
+          />
 
-                  <Text style={styles.inputTitle}>Senha</Text>
-                  <TextInput
-                      style={styles.input}
-                      placeholder="Digite sua senha"
-                      placeholderTextColor="#A9A9A9" 
-                      secureTextEntry
-                      value={password}
-                      onChangeText={setPassword}
-                      editable={!loading}
-                  />
+          <Text style={styles.inputTitle}>Senha</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Digite sua senha"
+            placeholderTextColor="#A9A9A9"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+            editable={!loading}
+          />
 
-                  {error ? (
-                    <Text style={styles.errorText}>{error}</Text>
-                  ) : null}
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : null}
 
-                  <TouchableOpacity 
-                    style={[styles.botao, {paddingTop: 15}, loading && styles.botaoDisabled]} 
-                    onPress={handleLogin}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <ActivityIndicator color="white" />
-                    ) : (
-                      <Text style={styles.textoBotao}>Entrar</Text>
-                    )}
-                  </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.botao, { paddingTop: 15 }, loading && styles.botaoDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.textoBotao}>Entrar</Text>
+            )}
+          </TouchableOpacity>
 
-                  <Text style={[styles.inputTitle, {fontSize: 15, opacity: 0.8, textDecorationLine: "underline"}]}>Esqueceu a senha?</Text>
-              </View>
-              
-              <View style={styles.viewcadastre}>
-                <Text style={styles.texto}>Não possui uma conta? </Text>
-                <Link href={"/cadastro"}>
-                  <Text style={styles.cadastre}>Cadastre-se</Text>
-                </Link>
-              </View>
-              
-              
+          <Link href="/recuperarSenha">
+            <Text style={[styles.inputTitle, { fontSize: 15, opacity: 0.8, textDecorationLine: "underline" }]}>
+              Esqueceu a senha?
+            </Text>
+          </Link>
+        </View>
 
-          </View>
+        <View style={styles.viewcadastre}>
+          <Text style={styles.texto}>Não possui uma conta? </Text>
+          <Link href={"/cadastro"}>
+            <Text style={styles.cadastre}>Cadastre-se</Text>
+          </Link>
+        </View>
+
+
+
+      </View>
     </View>
-      
+
   );
 }
 
-const styles = StyleSheet.create({
-    container:{
-    flex:1,
+const styles = StyleSheet.create<any>({
+  container: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     flexDirection: 'row',
     backgroundColor: '#f1f1f1',
-    },
+  },
 
-  content:{
+  content: {
     flex: 1,
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center'
-},
+  },
 
-  loginLogo:{
+  loginLogo: {
     width: 100,
     height: 100,
     marginBottom: 15
   },
 
-  logoContent:{
+  logoContent: {
     flex: 1,
     justifyContent: 'center',
     paddingTop: 15,
   },
 
-  inputContent:{
-     flex: 1,
-     justifyContent: 'flex-start',
-     alignItems: 'flex-start'
+  inputContent: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start'
   },
 
-  texto:{
+  texto: {
     fontSize: 17,
   },
 
-  viewcadastre:{
+  viewcadastre: {
     flex: 0.5,
-    flexDirection: 'row', 
+    flexDirection: 'row',
     alignItems: 'center'
   },
 
-  cadastre:{
+  cadastre: {
     color: '#24BF94',
     textDecorationLine: "underline",
-    fontSize:18,
+    fontSize: 18,
   },
-  
 
-  inputTitle:{
+
+  inputTitle: {
     fontFamily: 'Rubik',
     fontSize: 18,
     fontWeight: 450
   },
 
-  input:{
+  input: {
     backgroundColor: '#fff',
     width: 320,
     height: 60,
@@ -180,21 +184,21 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins'
   },
 
-  title:{
+  title: {
     fontFamily: 'Rubik',
-    fontSize:25,
+    fontSize: 25,
     fontWeight: 500
   },
 
-  botao:{
+  botao: {
     width: 320,
     height: 55,
     backgroundColor: "#24BF94",
     borderRadius: 10,
-    marginBottom:15
+    marginBottom: 15
   },
 
-  textoBotao:{
+  textoBotao: {
     color: 'white',
     textAlign: 'center',
     fontSize: 17
