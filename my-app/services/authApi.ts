@@ -42,6 +42,7 @@ const authAxios = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 10000, // 10 segundos
 });
 
 // SRP: authService encapsula apenas chamadas relacionadas à autenticação.
@@ -49,6 +50,7 @@ const authAxios = axios.create({
 export const authService = {
   async login(loginData: LoginRequest): Promise<LoginResponse> {
     console.log("Fazendo login...");
+    console.log("URL:", `${appSettings.URL.backend.api}/auth/login`);
 
     try {
       const response = await authAxios.post<LoginResponse>(
@@ -58,8 +60,16 @@ export const authService = {
       console.log("Status:", response.status);
       return response.data;
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.detail || error.message || "Erro ao fazer login";
+      let errorMessage;
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Tempo de conexão esgotado. Verifique sua conexão de rede e se o servidor está acessível.";
+      } else {
+        errorMessage =
+          error.response?.data?.detail ||
+          error.message ||
+          "Erro ao fazer login";
+      }
       console.error("Erro:", errorMessage);
       throw new Error(
         `Erro ao fazer login: ${
@@ -80,8 +90,16 @@ export const authService = {
       console.log("Status:", response.status);
       return response.data;
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.detail || error.message || "Erro ao fazer logout";
+      let errorMessage;
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Tempo de conexão esgotado. Verifique sua conexão de rede e se o servidor está acessível.";
+      } else {
+        errorMessage =
+          error.response?.data?.detail ||
+          error.message ||
+          "Erro ao fazer logout";
+      }
       console.error("Erro:", errorMessage);
       throw new Error(
         `Erro ao fazer logout: ${
@@ -89,8 +107,6 @@ export const authService = {
         } - ${errorMessage}`
       );
     }
-
-    return await response.json();
   },
 
   async refreshToken(
@@ -106,10 +122,16 @@ export const authService = {
       console.log("Status:", response.status);
       return response.data;
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.detail ||
-        error.message ||
-        "Erro ao renovar token";
+      let errorMessage;
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Tempo de conexão esgotado. Verifique sua conexão de rede e se o servidor está acessível.";
+      } else {
+        errorMessage =
+          error.response?.data?.detail ||
+          error.message ||
+          "Erro ao renovar token";
+      }
       console.error("Erro:", errorMessage);
       throw new Error(
         `Erro ao renovar token: ${
