@@ -7,26 +7,39 @@ import {
     ScrollView,
     ActivityIndicator,
     Alert,
-    RefreshControl
+    RefreshControl,
+    TouchableOpacity
 } from "react-native";
-import { rankingService, RankingItem } from "../../services/rankingApi"; 
+import { rankingService, RankingItem, FastestPlayerItem } from "../../services/rankingApi";
+
+type RankingTab = 'general' | 'fastest';
 
 export default function Ranking() {
-    const [ranking, setRanking] = useState<RankingItem[]>([]);
+    const [activeTab, setActiveTab] = useState<RankingTab>('general');
+
+    const [generalRanking, setGeneralRanking] = useState<RankingItem[]>([]);
+    const [fastestRanking, setFastestRanking] = useState<FastestPlayerItem[]>([]);
+
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
-        fetchRanking();
-    }, []);
+        fetchData();
+    }, [activeTab]); 
 
-    const fetchRanking = async () => {
+    const fetchData = async () => {
+        setLoading(true);
         try {
-            const data = await rankingService.getRanking();
-            setRanking(data);
+            if (activeTab === 'general') {
+                const data = await rankingService.getRanking();
+                setGeneralRanking(data);
+            } else {
+                const data = await rankingService.getFastestPlayers();
+                setFastestRanking(data);
+            }
         } catch (error) {
-            console.error("Erro ao buscar ranking:", error);
-            Alert.alert("Erro", "Não foi possível carregar o ranking. Verifique se o Ranking Service (Porta 3004) está rodando.");
+            console.error("Erro ao buscar dados:", error);
+            Alert.alert("Erro", "Não foi possível carregar o ranking. Verifique a conexão.");
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -35,118 +48,130 @@ export default function Ranking() {
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        fetchRanking();
-    }, []);
+        fetchData();
+    }, [activeTab]);
 
     const getAvatar = () => {
         return require("../../assets/images/katherinepierce.jpg");
     };
 
-    if (loading) {
+    const renderPodium = () => {
+        const list = activeTab === 'general' ? generalRanking : fastestRanking;
+
+        const first = list[0];
+        const second = list[1];
+        const third = list[2];
+
+        const getValue = (item: any) => {
+            if (activeTab === 'general') return `${item.total_points} pts`;
+            return item.fastest_time_formatted || "--:--";
+        };
+
         return (
-            <View style={[styles.container, { justifyContent: "center" }]}>
-                <ActivityIndicator size="large" color="#24BF94" />
-                <Text style={{marginTop: 10, color: '#555'}}>Carregando Ranking...</Text>
+            <View style={styles.topContainer}>
+                {second && (
+                    <View style={styles.topItemSmall}>
+                        <Image source={getAvatar()} style={styles.avatarSmall} />
+                        <Text style={styles.topName} numberOfLines={1}>{second.user_name}</Text>
+                        <View style={styles.badgeRank}><Text style={styles.badgeText}>2</Text></View>
+                        <Text style={styles.topPoints}>{getValue(second)}</Text>
+                    </View>
+                )}
+
+                {first && (
+                    <View style={styles.topItemMain}>
+                        <Image source={getAvatar()} style={styles.avatarMain} />
+                        <Text style={styles.topName} numberOfLines={1}>{first.user_name}</Text>
+                        <View style={[styles.badgeRank, { backgroundColor: '#FFC107' }]}><Text style={styles.badgeText}>1</Text></View>
+                        <Text style={[styles.topPoints, { fontSize: 16, fontWeight: "bold" }]}>{getValue(first)}</Text>
+                    </View>
+                )}
+
+                {third && (
+                    <View style={styles.topItemSmall}>
+                        <Image source={getAvatar()} style={styles.avatarSmallTwo} />
+                        <Text style={styles.topName} numberOfLines={1}>{third.user_name}</Text>
+                        <View style={[styles.badgeRank, { backgroundColor: '#BF8970' }]}><Text style={styles.badgeText}>3</Text></View>
+                        <Text style={styles.topPoints}>{getValue(third)}</Text>
+                    </View>
+                )}
             </View>
         );
-    }
-
-    const firstPlace = ranking[0];
-    const secondPlace = ranking[1];
-    const thirdPlace = ranking[2];
+    };
 
     return (
         <View style={styles.container}>
             <View style={styles.content}>
-
                 <View style={styles.logoContent}>
-                    <Image
-                        source={require("../../assets/images/LogoBG.png")}
-                        style={styles.loginLogo}
-                    />
+                    <Image source={require("../../assets/images/LogoBG.png")} style={styles.loginLogo} />
                     <Text style={styles.title}>FUTQUIZ</Text>
                 </View>
 
-                {/* PODIO (TOP 3) */}
-                <View style={styles.topContainer}>
-                    {secondPlace && (
-                        <View style={styles.topItemSmall}>
-                            <Image source={getAvatar()} style={styles.avatarSmall} />
-                            <Text style={styles.topName} numberOfLines={1}>
-                                {secondPlace.user_name}
-                            </Text>
-                            <View style={styles.badgeRank}><Text style={styles.badgeText}>2</Text></View>
-                            <Text style={styles.topPoints}>
-                                {secondPlace.total_points}
-                            </Text>
-                        </View>
-                    )}
+                <View style={styles.tabContainer}>
+                    <TouchableOpacity
+                        style={[styles.tabButton, activeTab === 'general' && styles.tabButtonActive]}
+                        onPress={() => setActiveTab('general')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'general' && styles.tabTextActive]}>Geral</Text>
+                    </TouchableOpacity>
 
-                    {firstPlace && (
-                        <View style={styles.topItemMain}>
-                            <Image source={getAvatar()} style={styles.avatarMain} />
-                            <Text style={styles.topName} numberOfLines={1}>
-                                {firstPlace.user_name}
-                            </Text>
-                            <View style={[styles.badgeRank, {backgroundColor: '#FFC107'}]}><Text style={styles.badgeText}>1</Text></View>
-                            <Text style={[styles.topPoints, { fontSize: 16, fontWeight: "bold" }]}>
-                                {firstPlace.total_points}
-                            </Text>
-                        </View>
-                    )}
-
-                    {thirdPlace && (
-                        <View style={styles.topItemSmall}>
-                            <Image source={getAvatar()} style={styles.avatarSmallTwo} />
-                            <Text style={styles.topName} numberOfLines={1}>
-                                {thirdPlace.user_name}
-                            </Text>
-                            <View style={[styles.badgeRank, {backgroundColor: '#BF8970'}]}><Text style={styles.badgeText}>3</Text></View>
-                            <Text style={styles.topPoints}>
-                                {thirdPlace.total_points}
-                            </Text>
-                        </View>
-                    )}
+                    <TouchableOpacity
+                        style={[styles.tabButton, activeTab === 'fastest' && styles.tabButtonActive]}
+                        onPress={() => setActiveTab('fastest')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'fastest' && styles.tabTextActive]}>Mais Rápidos</Text>
+                    </TouchableOpacity>
                 </View>
 
-                {/* LISTA DO RESTANTE DO RANKING */}
-                <ScrollView 
-                    style={styles.scrollcontent}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#24BF94"]} />
-                    }
-                >
-                    <View style={styles.rankList}>
-                        {ranking.map((item, index) => {
-                            return (
-                                <View key={item.user_id} style={styles.rankItem}>
-                                    <Text style={styles.rankPosition}>
-                                        {item.rank}º
-                                    </Text>
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#24BF94" />
+                    </View>
+                ) : (
+                    <>
+                        {renderPodium()}
 
-                                    <View style={styles.rankUser}>
-                                        <Image source={getAvatar()} style={styles.rankAvatar} />
-                                        <Text style={styles.rankName}>
-                                            {item.user_name}
+                        <ScrollView
+                            style={styles.scrollcontent}
+                            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#24BF94"]} />}
+                        >
+                            <View style={styles.rankList}>
+                                {(activeTab === 'general' ? generalRanking : fastestRanking).map((item: any) => (
+                                    <View key={item.user_id} style={styles.rankItem}>
+                                        <Text style={styles.rankPosition}>{item.rank}º</Text>
+
+                                        <View style={styles.rankUser}>
+                                            <Image source={getAvatar()} style={styles.rankAvatar} />
+                                            <View>
+                                                <Text style={styles.rankName}>{item.user_name}</Text>
+                                                <Text style={styles.rankSubtext}>
+                                                    {activeTab === 'general'
+                                                        ? `${item.total_quizzes || 0} quizzes`
+                                                        : '100% de acerto'}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        <Text style={styles.rankPoints}>
+                                            {activeTab === 'general'
+                                                ? `${item.total_points} pts`
+                                                : item.fastest_time_formatted}
                                         </Text>
                                     </View>
+                                ))}
 
-                                    <Text style={styles.rankPoints}>
-                                        {item.total_points} pts
-                                    </Text>
-                                </View>
-                            );
-                        })}
-
-                        {ranking.length === 0 && (
-                            <Text style={{ textAlign: "center", marginTop: 20, color: "#999" }}>
-                                Nenhum jogador no ranking ainda.{'\n'}
-                                Jogue um quiz para aparecer aqui!
-                            </Text>
-                        )}
-                    </View>
-                </ScrollView>
-
+                                {((activeTab === 'general' && generalRanking.length === 0) ||
+                                    (activeTab === 'fastest' && fastestRanking.length === 0)) && (
+                                        <Text style={styles.emptyText}>
+                                            {activeTab === 'general'
+                                                ? "Nenhum jogador pontuou ainda."
+                                                : "Ninguém completou um quiz com 100% de acerto ainda."}
+                                        </Text>
+                                    )}
+                            </View>
+                        </ScrollView>
+                    </>
+                )}
             </View>
         </View>
     );
@@ -161,6 +186,11 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: "center",
     },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
     logoContent: {
         flexDirection: "row",
         alignItems: "center",
@@ -173,10 +203,39 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     title: {
-        fontFamily: "Rubik", 
+        fontFamily: "Rubik",
         fontSize: 22,
         fontWeight: "bold",
         color: "#333"
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#e0e0e0',
+        borderRadius: 25,
+        padding: 4,
+        marginVertical: 15,
+        width: '80%',
+    },
+    tabButton: {
+        flex: 1,
+        paddingVertical: 8,
+        borderRadius: 20,
+        alignItems: 'center',
+    },
+    tabButtonActive: {
+        backgroundColor: '#24BF94',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        elevation: 2,
+    },
+    tabText: {
+        fontFamily: "Rubik",
+        color: '#777',
+        fontWeight: '600',
+    },
+    tabTextActive: {
+        color: '#FFF',
     },
     topContainer: {
         flexDirection: "row",
@@ -237,7 +296,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         position: 'absolute',
-        top: 60, 
+        top: 60,
         right: 0
     },
     badgeText: {
@@ -293,9 +352,20 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: '#333'
     },
+    rankSubtext: {
+        fontSize: 10,
+        color: '#999',
+        marginTop: 1
+    },
     rankPoints: {
         fontSize: 14,
         fontWeight: "bold",
         color: "#24BF94",
     },
+    emptyText: {
+        textAlign: "center",
+        marginTop: 20,
+        color: "#999",
+        paddingHorizontal: 20
+    }
 });
