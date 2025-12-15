@@ -2,6 +2,7 @@ import json
 import logging
 import aio_pika
 from app.config import settings
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -68,5 +69,26 @@ class EventProducer:
 
         except Exception as e:
             logger.error(f"❌ Erro ao publicar evento: {e}")
+
+
+    async def publish_invite(self, inviter_name: str, target_email: str):
+        """Publica evento de convite"""
+        if not self.exchange:
+            await self.connect()
+
+        payload = {
+            "type": "invite",
+            "inviter_name": inviter_name,
+            "target_email": target_email,
+            "timestamp": str(datetime.utcnow())
+        }
+
+        message = aio_pika.Message(
+            body=json.dumps(payload).encode(),
+            delivery_mode=aio_pika.DeliveryMode.PERSISTENT
+        )
+
+        await self.exchange.publish(message, routing_key="user.invite")
+        logger.info(f"📤 Convite enviado de {inviter_name} para {target_email}")       
 
 event_producer = EventProducer()

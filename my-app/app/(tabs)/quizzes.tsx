@@ -114,7 +114,7 @@ export default function MyQuizzes() {
             <View style={styles.quizList}>
               {quizzes.map((quiz) => (
                 <TouchableOpacity
-                  key={quiz.id}
+                  key={quiz.id} // ADICIONADO AQUI: A chave única para cada item da lista
                   style={styles.quizCard}
                   onPress={() => handlePlayQuiz(quiz.id)}
                 >
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: "Rubik",
     fontSize: 25,
-    fontWeight: 500,
+    fontWeight: "500",
   },
 
   headerBar: {
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: "Rubik",
     fontSize: 24,
-    fontWeight: 500,
+    fontWeight: "500",
   },
 
   editIcon: {

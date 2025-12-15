@@ -3,7 +3,9 @@
 
 // URL base do backend (API Gateway)
 // Usa IP da máquina host para funcionar no React Native (dispositivo/emulador não acessa localhost)
-const BACKEND_BASE_URL = "http://192.168.0.106:3000";
+// Carrega do arquivo .env ou usa valor padrão
+const BACKEND_BASE_URL =
+  process.env.EXPO_PUBLIC_BACKEND_URL || "http://192.168.0.106:3000";
 
 export const appSettings = {
   name: "FutQuiz",

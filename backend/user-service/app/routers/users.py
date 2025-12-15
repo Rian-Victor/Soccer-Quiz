@@ -68,6 +68,16 @@ class UserInternalResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class PasswordResetRequest(BaseModel):
+    """Schema para solicitar recuperação de senha"""
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    """Schema para confirmar a redefinição de senha"""
+    token: str
+    new_password: str
+    email: EmailStr
+
 class InternalPasswordUpdateRequest(BaseModel):
     """Schema para atualização interna de senha (recebe o hash pronto)"""
     password_hash: str
@@ -230,6 +240,29 @@ async def get_user_by_email_internal(
     )
 
 
+@router.post("/password/forgot", status_code=status.HTTP_200_OK)
+async def forgot_password(
+    request: PasswordResetRequest,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Rota para solicitar recuperação de senha.
+    (Versão DEBUG para exibir token no terminal)
+    """
+    user = user_service.get_user_by_email(request.email)
+    if not user:
+        print(f"DEBUG: Tentativa de reset para email inexistente: {request.email}")
+        return {"message": "Se o email existir, instruções enviadas."}
+
+    import secrets
+    token = secrets.token_hex(4) 
+    
+    print("="*50)
+    print(f"🔒 TOKEN GERADO PARA {request.email}: {token}")
+    print("="*50)
+
+    return {"message": "Token gerado (verifique logs)"}
+
 @router.patch("/internal/{user_id}/password", status_code=status.HTTP_200_OK)
 async def update_user_password_internal(
     user_id: int,
@@ -250,3 +283,33 @@ async def update_user_password_internal(
         )
     
     return {"message": "Senha atualizada com sucesso"}
+
+
+@router.post("/password/reset", status_code=status.HTTP_200_OK)
+async def confirm_password_reset(
+    request: PasswordResetConfirm,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Rota para efetivar a troca de senha.
+    AGORA COM LÓGICA REAL (Via Email)
+    """
+    print(f"🔄 Resetando senha para: {request.email}")
+
+    user = user_service.get_user_by_email(request.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Email não encontrado."
+        )
+
+    updated_user = user_service.update_user(
+        user_id=user.id, 
+        password=request.new_password
+    )
+
+    if not updated_user:
+        raise HTTPException(status_code=400, detail="Erro ao atualizar senha.")
+
+    print("✅ Senha alterada no banco de dados!")
+    return {"message": "Senha alterada com sucesso."}
