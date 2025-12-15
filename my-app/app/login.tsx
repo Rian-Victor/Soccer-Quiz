@@ -12,7 +12,6 @@ export default function Login(){
   const router = useRouter();
 
   const handleLogin = async () => {
-    // Validação básica
     if (!email.trim() || !password.trim()) {
       setError("Por favor, preencha todos os campos");
       return;
@@ -28,7 +27,6 @@ export default function Login(){
         password: password,
       });
 
-      // Armazenar tokens e dados do usuário
       await AsyncStorage.setItem("access_token", response.access_token);
       await AsyncStorage.setItem("refresh_token", response.refresh_token);
       await AsyncStorage.setItem("user_id", response.user_id.toString());
@@ -37,7 +35,6 @@ export default function Login(){
 
       console.log("Login bem-sucedido! User ID:", response.user_id);
       
-      // Navegar para a tela home
       router.replace("/(tabs)/home");
     } catch (err: any) {
       console.error("Erro no login:", err);

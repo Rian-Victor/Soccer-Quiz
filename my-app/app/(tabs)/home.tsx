@@ -6,16 +6,23 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert
+  Alert,
+  Modal
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useState, useCallback } from "react";
 import { quizService, QuizResponse } from "../../services/quizApi";
+import { Feather } from '@expo/vector-icons';
+
+let hasSeenNotificationThisSession = false;
 
 export default function Home() {
   const router = useRouter();
   const [quizzes, setQuizzes] = useState<QuizResponse[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [showNotification, setShowNotification] = useState(false);
+  const [newQuizData, setNewQuizData] = useState<QuizResponse | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -25,13 +32,47 @@ export default function Home() {
 
   const fetchQuizzes = async () => {
     try {
-      setLoading(true);
+      if (quizzes.length === 0) setLoading(true);
+      
       const data = await quizService.getQuizzes();
-      setQuizzes(data);
+      
+      const sortedData = data.sort((a: any, b: any) => {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      setQuizzes(sortedData);
+
+      if (sortedData && sortedData.length > 0) {
+        const latestQuiz = sortedData[0]; 
+
+        if (!hasSeenNotificationThisSession) {
+          console.log("🚀 [ALERTA] Primeira vez na sessão! Mostrando modal...");
+          setNewQuizData(latestQuiz);
+          setShowNotification(true);
+          
+          hasSeenNotificationThisSession = true;
+        } 
+      }
+
     } catch (error) {
       console.log("Erro ao buscar quizzes:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCloseNotification = () => {
+    setShowNotification(false);
+  };
+
+  const handlePlayNewQuiz = () => {
+    if (newQuizData) {
+      setShowNotification(false);
+      
+      router.push({
+        pathname: "/game",
+        params: { mode: "custom", quizId: newQuizData.id } 
+      } as any);
     }
   };
 
@@ -61,6 +102,41 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
+      
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showNotification}
+        onRequestClose={handleCloseNotification}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalIconContainer}>
+              <Feather name="bell" size={30} color="#FFF" />
+            </View>
+            
+            <Text style={styles.modalTitle}>Novo Desafio!</Text>
+            <Text style={styles.modalSubtitle}>
+              O quiz <Text style={{fontWeight: 'bold'}}>"{newQuizData?.title}"</Text> acabou de sair. Aceita o desafio?
+            </Text>
+
+            <TouchableOpacity 
+              style={styles.modalButtonPlay} 
+              onPress={handlePlayNewQuiz}
+            >
+              <Text style={styles.modalButtonPlayText}>JOGAR AGORA</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.modalButtonClose} 
+              onPress={handleCloseNotification}
+            >
+              <Text style={styles.modalButtonCloseText}>Ver depois</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.content}>
 
         <View style={styles.logoContent}>
@@ -83,7 +159,7 @@ export default function Home() {
                 <Text style={{ color: '#666' }}>Desafio Diário</Text>
               </View>
             </TouchableOpacity>
-1
+
             {loading ? (
               <ActivityIndicator color="#24bf94" style={{ marginTop: 20 }} />
             ) : quizzes.length === 0 ? (
@@ -156,13 +232,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingBottom: 50
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 15,
-    color: '#333'
-  },
   mainCard: {
   },
   imgMainQuiz: {
@@ -215,4 +284,72 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginBottom: 2
   },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    width: '90%',
+    borderRadius: 20,
+    padding: 25,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5
+  },
+  modalIconContainer: {
+    backgroundColor: '#24BF94',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -55, 
+    marginBottom: 15,
+    borderWidth: 4,
+    borderColor: '#fff'
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center'
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 25,
+    lineHeight: 22
+  },
+  modalButtonPlay: {
+    backgroundColor: '#24BF94',
+    width: '100%',
+    paddingVertical: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  modalButtonPlayText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16
+  },
+  modalButtonClose: {
+    paddingVertical: 10,
+    width: '100%',
+    alignItems: 'center'
+  },
+  modalButtonCloseText: {
+    color: '#999',
+    fontSize: 14
+  }
 });
