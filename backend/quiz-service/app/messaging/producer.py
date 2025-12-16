@@ -1,5 +1,6 @@
 import json
 import logging
+import asyncio
 import aio_pika
 from aio_pika.exceptions import AMQPConnectionError
 from app.config import settings
