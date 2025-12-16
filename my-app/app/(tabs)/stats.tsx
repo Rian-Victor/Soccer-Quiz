@@ -23,11 +23,7 @@ export default function Ranking() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        fetchData();
-    }, [activeTab]); 
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             if (activeTab === 'general') {
@@ -44,12 +40,16 @@ export default function Ranking() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, [activeTab]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]); 
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
         fetchData();
-    }, [activeTab]);
+    }, [fetchData]);
 
     const getAvatar = () => {
         return require("../../assets/images/katherinepierce.jpg");

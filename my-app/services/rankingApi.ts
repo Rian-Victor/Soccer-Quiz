@@ -1,4 +1,4 @@
-const RANKING_API_BASE_URL = "http://192.168.1.211:3005/api/leaderboard";
+import { appSettings } from "../Configs/settings";
 
 export interface RankingItem {
     rank: number;
@@ -25,6 +25,12 @@ export interface FastestResponse {
     fastest_players: FastestPlayerItem[];
 }
 
+// URL base do ranking service (porta 3005)
+const RANKING_SERVICE_URL = process.env.EXPO_PUBLIC_RANKING_URL || 
+    (appSettings.URL.backend.root.replace(':3000', ':3005'));
+
+const RANKING_API_BASE_URL = `${RANKING_SERVICE_URL}/api/leaderboard`;
+
 export const rankingService = {
     async getRanking(): Promise<RankingItem[]> {
         try {
@@ -37,9 +43,12 @@ export const rankingService = {
 
             const data: RankingResponse = await response.json();
             return data.ranking ?? [];
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage =
+                error.message ||
+                "Erro ao buscar ranking";
             console.error("Erro na requisição do ranking geral:", error);
-            throw error;
+            throw new Error(`Erro ao buscar ranking: ${errorMessage}`);
         }
     },
 
@@ -54,9 +63,12 @@ export const rankingService = {
 
             const data: FastestResponse = await response.json();
             return data.fastest_players ?? [];
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage =
+                error.message ||
+                "Erro ao buscar mais rápidos";
             console.error("Erro na requisição do ranking de velocidade:", error);
-            throw error;
+            throw new Error(`Erro ao buscar mais rápidos: ${errorMessage}`);
         }
     }
 };

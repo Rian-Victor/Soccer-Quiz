@@ -194,12 +194,25 @@ export default function GameScreen() {
                 Acertos: ${correctCountRef.current} | Erros: ${wrongCountRef.current}
             `);
 
+            // Usa o questionId do array de questões do quiz, não o id do objeto question
+            const currentQuestionId = currentQuiz.questions[localQuestionIndex];
+            
+            console.log("💾 Salvando resposta:", {
+                localQuestionIndex,
+                currentQuestionId,
+                currentQuestionIdFromObject: currentQuestion.id,
+                answerId: respostaEnviar,
+                timeTaken: tempoGasto
+            });
+            
             answersRef.current.push({
-                questionId: currentQuestion.id,
+                questionId: currentQuestionId, // Usa o ID do array de questões
                 answerId: respostaEnviar,
                 timeTaken: tempoGasto,
                 points: pointsNestaQuestao 
             });
+            
+            console.log("📝 answersRef atualizado, total:", answersRef.current.length);
 
             setResultData({
                 correct: !!isCorrect,
@@ -227,40 +240,104 @@ export default function GameScreen() {
     };
 
     const submitAllAnswers = async () => {
-        if (!currentQuiz || answersRef.current.length === 0) return;
+        console.log("🔄 submitAllAnswers chamado");
+        console.log("📊 currentQuiz:", currentQuiz?.id);
+        console.log("📝 answersRef.current.length:", answersRef.current.length);
+        console.log("📝 answersRef.current:", answersRef.current);
+        
+        if (!currentQuiz) {
+            console.error("❌ currentQuiz é null");
+            return;
+        }
+        
+        if (answersRef.current.length === 0) {
+            console.error("❌ Nenhuma resposta para enviar");
+            return;
+        }
 
         try {
             setSubmitting(true);
-            const startIndex = currentQuiz.current_question_index;
+            console.log("✅ Iniciando envio de respostas...");
             
-            const questionsToSubmit = currentQuiz.questions.slice(startIndex);
+            // Envia todas as respostas na ordem correta das questões do quiz
+            console.log("🔍 Comparando questões do quiz com respostas:");
+            console.log("Quiz questions:", currentQuiz.questions);
+            console.log("Respostas salvas:", answersRef.current.map(a => a.questionId));
             
-            const orderedAnswers = questionsToSubmit
-                .map((qId) => answersRef.current.find((a) => a.questionId === qId))
+            const orderedAnswers = currentQuiz.questions
+                .map((qId) => {
+                    const answer = answersRef.current.find((a) => a.questionId === qId);
+                    if (!answer) {
+                        console.warn(`⚠️ Resposta não encontrada para questão ${qId}`);
+                    }
+                    return answer;
+                })
                 .filter((a) => a !== undefined);
+
+            console.log(`📤 Enviando ${orderedAnswers.length} respostas de ${currentQuiz.questions.length} questões...`);
+
+            if (orderedAnswers.length === 0) {
+                console.error("❌ Nenhuma resposta encontrada para as questões do quiz");
+                return;
+            }
 
             let currentQuizState = currentQuiz;
 
-            for (const answer of orderedAnswers) {
+            for (let i = 0; i < orderedAnswers.length; i++) {
+                const answer = orderedAnswers[i];
+                if (!answer) {
+                    console.warn(`⚠️ Resposta ${i + 1} não encontrada, pulando...`);
+                    continue;
+                }
+                
                 try {
-                    await gameplayService.submitAnswer(
+                    console.log(`📤 Enviando resposta ${i + 1}/${orderedAnswers.length}:`, {
+                        sessionId: currentQuizState.id,
+                        questionId: answer.questionId,
+                        answerId: answer.answerId,
+                        timeTaken: answer.timeTaken
+                    });
+                    
+                    const response = await gameplayService.submitAnswer(
                         currentQuizState.id,
                         answer.questionId,
                         answer.answerId,
-                        answer.timeTaken,
-                        answer.points 
+                        answer.timeTaken
                     );
                     
+                    console.log(`✅ Resposta ${i + 1} enviada com sucesso:`, response);
+                    
+                    // Atualiza o estado do quiz com a resposta do backend
                     currentQuizState = {
                         ...currentQuizState,
-                        current_question_index: currentQuizState.current_question_index + 1
+                        current_question_index: response.current_question_index || currentQuizState.current_question_index + 1,
+                        total_points: response.new_total_points || currentQuizState.total_points
                     };
-                } catch (error) {
-                    console.log("Erro silencioso ao enviar resposta ao backend:", error);
+                    
+                    // Se o quiz foi finalizado (is_quiz_finished = true), para de enviar
+                    if (response.is_quiz_finished) {
+                        console.log("🏁 Quiz finalizado no backend!");
+                        break;
+                    }
+                } catch (error: any) {
+                    console.error(`❌ Erro ao enviar resposta ${i + 1}:`, error);
+                    console.error("Detalhes do erro:", error.message);
+                    if (error.response) {
+                        console.error("Status:", error.response.status);
+                        console.error("Data:", error.response.data);
+                    }
+                    // Continua tentando enviar as outras respostas mesmo se uma falhar
                 }
             }
-        } catch (error) {
-            console.error("Erro geral no envio:", error);
+            
+            console.log("✅ Todas as respostas processadas");
+        } catch (error: any) {
+            console.error("❌ Erro geral no envio:", error);
+            console.error("Detalhes do erro:", error.message);
+            if (error.response) {
+                console.error("Status:", error.response.status);
+                console.error("Data:", error.response.data);
+            }
         } finally {
             setSubmitting(false);
         }
