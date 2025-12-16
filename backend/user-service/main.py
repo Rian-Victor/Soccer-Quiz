@@ -5,6 +5,7 @@ Gerencia usuários e suas informações
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 import uvicorn
 
 from app.config import settings
@@ -45,8 +46,8 @@ app.include_router(users.router, prefix="/users", tags=["users"])
 
 @app.get("/", tags=["health"])
 async def root():
-    """Health check endpoint"""
-    return {"service": "user-service", "status": "running", "version": "1.0.0"}
+    """Redireciona para a documentação Swagger"""
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health", tags=["health"])

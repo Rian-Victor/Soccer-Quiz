@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { userService } from "../services/userApi";
+//import { userService } from "../services/userApi";
 import { appSettings } from "../Configs/settings";
 
 export default function Cadastro() {
@@ -72,13 +72,13 @@ export default function Cadastro() {
       console.log("Tentando criar usuário...");
       console.log("URL do backend:", appSettings.URL.backend.api);
 
-      const response = await userService.createUser({
+      /*const response = await userService.createUser({
         name: nome.trim(),
         email: email.trim(),
         password: senha,
-      });
+      });*/
 
-      console.log("Usuário criado com sucesso! ID:", response.id);
+      /*console.log("Usuário criado com sucesso! ID:", response.id);*/
 
       Alert.alert("Sucesso", "Conta criada com sucesso!", [
         { text: "Fazer Login", onPress: () => router.replace("/login") },

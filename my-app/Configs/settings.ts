@@ -5,7 +5,7 @@
 // Usa IP da máquina host para funcionar no React Native (dispositivo/emulador não acessa localhost)
 // Carrega do arquivo .env ou usa valor padrão
 const BACKEND_BASE_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL || "http://192.168.0.106:3000";
+  process.env.EXPO_PUBLIC_BACKEND_URL || "http://192.168.1.211:3000";
 
 export const appSettings = {
   name: "FutQuiz",
