@@ -100,6 +100,33 @@ export default function GameScreen() {
         }
     }, [currentQuiz?.id]);
 
+    // ✅ LÓGICA ESPELHADA DO BACKEND
+    // Garante que o placar no App seja igual ao do Banco de Dados
+    const calculateScore = (timeTaken: number, difficulty: string = "medium") => {
+        const BASE_POINTS = 100;
+        const MAX_TIME = 15; // Importante: deve bater com o questionTimer
+        
+        // 1. Sanitização
+        const safeTime = Math.max(0, timeTaken);
+        
+        // 2. Bônus de Velocidade: (15 - Tempo Gasto) * 2
+        const timeBonus = Math.max(0, (MAX_TIME - safeTime) * 2);
+        
+        // 3. Multiplicador de Dificuldade
+        let multiplier = 1.5; // Default Medium
+        const diffStr = difficulty ? difficulty.toLowerCase() : "medium";
+
+        switch (diffStr) {
+            case 'easy': multiplier = 1.0; break;
+            case 'medium': multiplier = 1.5; break;
+            case 'hard': multiplier = 2.0; break;
+            default: multiplier = 1.5;
+        }
+
+        const rawScore = BASE_POINTS + timeBonus;
+        return Math.floor(rawScore * multiplier);
+    };
+
     const iniciarJogo = async () => {
         try {
             setLoading(true);
@@ -168,7 +195,11 @@ export default function GameScreen() {
         setGameState('feedback');
 
         try {
-            const tempoGasto = tempoEsgotado ? 15 : Math.floor((Date.now() - questionStartTime) / 1000);
+            // Garante que o tempo nunca passa de 15s ou seja negativo
+            let tempoBruto = Math.floor((Date.now() - questionStartTime) / 1000);
+            if (tempoEsgotado) tempoBruto = 15;
+            const tempoGasto = Math.min(15, Math.max(0, tempoBruto));
+
             const respostaEnviar = selectedAnswer || "tempo_esgotado";
 
             const correctAnswer = currentQuestion.answers.find(a => a.correct);
@@ -177,10 +208,8 @@ export default function GameScreen() {
             let pointsNestaQuestao = 0;
             
             if (isCorrect) {
-                pointsNestaQuestao = 100; 
-                if (tempoGasto < 5) {
-                    pointsNestaQuestao += 50; 
-                }
+                // ✅ Calcula pontos para mostrar na tela final, mas não envia pro backend
+                pointsNestaQuestao = calculateScore(tempoGasto, currentQuestion.difficulty);
                 correctCountRef.current += 1;
             } else {
                 wrongCountRef.current += 1;
@@ -189,31 +218,22 @@ export default function GameScreen() {
             scoreAccumulatorRef.current += pointsNestaQuestao;
 
             console.log(`📝 Questão respondida. 
-                Pontos Ganhos: ${pointsNestaQuestao} 
-                TOTAL ACUMULADO ATÉ AGORA: ${scoreAccumulatorRef.current}
-                Acertos: ${correctCountRef.current} | Erros: ${wrongCountRef.current}
+                Dificuldade: ${currentQuestion.difficulty}
+                Tempo: ${tempoGasto}s
+                Pontos (Local): ${pointsNestaQuestao} 
+                TOTAL ACUMULADO (Local): ${scoreAccumulatorRef.current}
             `);
 
-            // Usa o questionId do array de questões do quiz, não o id do objeto question
+            // Usa o questionId do array de questões do quiz
             const currentQuestionId = currentQuiz.questions[localQuestionIndex];
             
-            console.log("💾 Salvando resposta:", {
-                localQuestionIndex,
-                currentQuestionId,
-                currentQuestionIdFromObject: currentQuestion.id,
-                answerId: respostaEnviar,
-                timeTaken: tempoGasto
-            });
-            
             answersRef.current.push({
-                questionId: currentQuestionId, // Usa o ID do array de questões
+                questionId: currentQuestionId, 
                 answerId: respostaEnviar,
                 timeTaken: tempoGasto,
-                points: pointsNestaQuestao 
+                points: pointsNestaQuestao // Guardamos apenas para referência local
             });
             
-            console.log("📝 answersRef atualizado, total:", answersRef.current.length);
-
             setResultData({
                 correct: !!isCorrect,
                 correctId: correctAnswer?.id || ""
@@ -241,9 +261,6 @@ export default function GameScreen() {
 
     const submitAllAnswers = async () => {
         console.log("🔄 submitAllAnswers chamado");
-        console.log("📊 currentQuiz:", currentQuiz?.id);
-        console.log("📝 answersRef.current.length:", answersRef.current.length);
-        console.log("📝 answersRef.current:", answersRef.current);
         
         if (!currentQuiz) {
             console.error("❌ currentQuiz é null");
@@ -257,27 +274,16 @@ export default function GameScreen() {
 
         try {
             setSubmitting(true);
-            console.log("✅ Iniciando envio de respostas...");
-            
-            // Envia todas as respostas na ordem correta das questões do quiz
-            console.log("🔍 Comparando questões do quiz com respostas:");
-            console.log("Quiz questions:", currentQuiz.questions);
-            console.log("Respostas salvas:", answersRef.current.map(a => a.questionId));
             
             const orderedAnswers = currentQuiz.questions
                 .map((qId) => {
                     const answer = answersRef.current.find((a) => a.questionId === qId);
-                    if (!answer) {
-                        console.warn(`⚠️ Resposta não encontrada para questão ${qId}`);
-                    }
                     return answer;
                 })
                 .filter((a) => a !== undefined);
 
-            console.log(`📤 Enviando ${orderedAnswers.length} respostas de ${currentQuiz.questions.length} questões...`);
-
             if (orderedAnswers.length === 0) {
-                console.error("❌ Nenhuma resposta encontrada para as questões do quiz");
+                console.error("❌ Nenhuma resposta encontrada");
                 return;
             }
 
@@ -285,19 +291,10 @@ export default function GameScreen() {
 
             for (let i = 0; i < orderedAnswers.length; i++) {
                 const answer = orderedAnswers[i];
-                if (!answer) {
-                    console.warn(`⚠️ Resposta ${i + 1} não encontrada, pulando...`);
-                    continue;
-                }
+                if (!answer) continue;
                 
                 try {
-                    console.log(`📤 Enviando resposta ${i + 1}/${orderedAnswers.length}:`, {
-                        sessionId: currentQuizState.id,
-                        questionId: answer.questionId,
-                        answerId: answer.answerId,
-                        timeTaken: answer.timeTaken
-                    });
-                    
+                    // ✅ O Backend calcula os pontos. Nós só mandamos o tempo.
                     const response = await gameplayService.submitAnswer(
                         currentQuizState.id,
                         answer.questionId,
@@ -305,39 +302,24 @@ export default function GameScreen() {
                         answer.timeTaken
                     );
                     
-                    console.log(`✅ Resposta ${i + 1} enviada com sucesso:`, response);
-                    
-                    // Atualiza o estado do quiz com a resposta do backend
                     currentQuizState = {
                         ...currentQuizState,
                         current_question_index: response.current_question_index || currentQuizState.current_question_index + 1,
+                        // Se o backend retornar o novo total, confiamos nele
                         total_points: response.new_total_points || currentQuizState.total_points
                     };
                     
-                    // Se o quiz foi finalizado (is_quiz_finished = true), para de enviar
                     if (response.is_quiz_finished) {
-                        console.log("🏁 Quiz finalizado no backend!");
                         break;
                     }
                 } catch (error: any) {
                     console.error(`❌ Erro ao enviar resposta ${i + 1}:`, error);
-                    console.error("Detalhes do erro:", error.message);
-                    if (error.response) {
-                        console.error("Status:", error.response.status);
-                        console.error("Data:", error.response.data);
-                    }
-                    // Continua tentando enviar as outras respostas mesmo se uma falhar
                 }
             }
             
             console.log("✅ Todas as respostas processadas");
         } catch (error: any) {
             console.error("❌ Erro geral no envio:", error);
-            console.error("Detalhes do erro:", error.message);
-            if (error.response) {
-                console.error("Status:", error.response.status);
-                console.error("Data:", error.response.data);
-            }
         } finally {
             setSubmitting(false);
         }
@@ -357,7 +339,6 @@ export default function GameScreen() {
             totalTime: totalTimer
         };
 
-        console.log("🏁 FINALIZANDO! Placar Final:", placarFinal);
         setResult(placarFinal);
 
         try {

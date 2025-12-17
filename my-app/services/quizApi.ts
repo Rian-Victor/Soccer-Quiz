@@ -1,5 +1,7 @@
 import { getAxiosInstance } from "../app/hooks/useAxios";
 
+// --- Interfaces ---
+
 export interface QuestionCreate {
   statement: string;
   topic: string;
@@ -95,6 +97,7 @@ export interface QuestionAnswer {
   points_earned: number;
 }
 
+// ✅ ATUALIZADO: Removemos 'points' daqui, pois o backend calcula.
 export interface SubmitAnswerRequest {
   session_id: string;
   question_id: string;
@@ -110,6 +113,7 @@ export interface SubmitAnswerResponse {
   correct_answers: number;
   wrong_answers: number;
   is_finished: boolean;
+  new_total_points?: number; // Backend pode retornar o total atualizado
 }
 
 export interface QuestionWithAnswers {
@@ -120,7 +124,8 @@ export interface QuestionWithAnswers {
   answers: AnswerResponse[];
 }
 
-// SRP: answerService lida apenas com os endpoints de respostas.
+// --- Services ---
+
 export const answerService = {
   async createAnswer(answerData: AnswerCreate): Promise<AnswerResponse> {
     try {
@@ -160,7 +165,6 @@ export const answerService = {
   },
 };
 
-// SRP: questionService agrupa apenas a lógica de perguntas.
 export const questionService = {
   async createQuestion(
     questionData: QuestionCreate
@@ -257,7 +261,6 @@ export const questionService = {
   },
 };
 
-// SRP: teamService concentra as chamadas relacionadas a times.
 export const teamService = {
   async createTeam(teamData: TeamCreate): Promise<TeamResponse> {
     try {
@@ -310,7 +313,6 @@ export const teamService = {
   },
 };
 
-// SRP: quizService concentra as chamadas relacionadas a quizzes pré-definidos.
 export const quizService = {
   async createQuiz(quizData: QuizCreate): Promise<QuizResponse> {
     try {
@@ -399,7 +401,6 @@ export const quizService = {
   },
 };
 
-// SRP: gameplayService concentra as chamadas relacionadas ao gameplay de quizzes.
 export const gameplayService = {
   async startQuiz(
     quizId?: string,
@@ -451,6 +452,7 @@ export const gameplayService = {
   ): Promise<SubmitAnswerResponse> {
     try {
       const axiosInstance = getAxiosInstance();
+      // ✅ ATUALIZADO: Não envia points
       const requestData: SubmitAnswerRequest = {
         session_id: sessionId,
         question_id: questionId,
@@ -518,7 +520,6 @@ export const gameplayService = {
     }
   },
 };
-
 
 export const quizGameService = {
   async getHeaders() {
