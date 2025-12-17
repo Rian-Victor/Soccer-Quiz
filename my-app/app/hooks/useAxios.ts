@@ -1,8 +1,7 @@
-import axios, { AxiosInstance } from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios, { AxiosInstance } from "axios";
 import { appSettings } from "../../Configs/settings";
 
-// Criar instância do axios com interceptors
 const createAxiosInstance = (): AxiosInstance => {
   const axiosInstance = axios.create({
     baseURL: appSettings.URL.backend.api,
@@ -11,7 +10,6 @@ const createAxiosInstance = (): AxiosInstance => {
     },
   });
 
-  // Interceptor para adicionar token de autenticação
   axiosInstance.interceptors.request.use(
     async (config) => {
       try {
@@ -20,7 +18,6 @@ const createAxiosInstance = (): AxiosInstance => {
           config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Adicionar headers de role e user_id
         const userRole = await AsyncStorage.getItem("user_role");
         const userId = await AsyncStorage.getItem("user_id");
 
@@ -40,13 +37,10 @@ const createAxiosInstance = (): AxiosInstance => {
     }
   );
 
-  // Interceptor para tratamento de erros
   axiosInstance.interceptors.response.use(
     (response) => response,
     async (error) => {
       if (error.response?.status === 401) {
-        // Token expirado ou inválido
-        // Opcional: tentar refresh token ou redirecionar para login
         console.warn("Token inválido ou expirado");
       }
       throw error;
@@ -56,12 +50,10 @@ const createAxiosInstance = (): AxiosInstance => {
   return axiosInstance;
 };
 
-// Função para obter instância do axios (usada em serviços)
 export const getAxiosInstance = (): AxiosInstance => {
   return createAxiosInstance();
 };
 
-// Hook React (usado em componentes)
 export const useAxios = (): AxiosInstance => {
   return createAxiosInstance();
 };

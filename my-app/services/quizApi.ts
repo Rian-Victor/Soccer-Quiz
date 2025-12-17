@@ -1,6 +1,5 @@
 import { getAxiosInstance } from "../app/hooks/useAxios";
 
-// --- Interfaces ---
 
 export interface QuestionCreate {
   statement: string;
@@ -97,7 +96,6 @@ export interface QuestionAnswer {
   points_earned: number;
 }
 
-// ✅ ATUALIZADO: Removemos 'points' daqui, pois o backend calcula.
 export interface SubmitAnswerRequest {
   session_id: string;
   question_id: string;
@@ -113,7 +111,7 @@ export interface SubmitAnswerResponse {
   correct_answers: number;
   wrong_answers: number;
   is_finished: boolean;
-  new_total_points?: number; // Backend pode retornar o total atualizado
+  new_total_points?: number; 
 }
 
 export interface QuestionWithAnswers {
@@ -124,7 +122,6 @@ export interface QuestionWithAnswers {
   answers: AnswerResponse[];
 }
 
-// --- Services ---
 
 export const answerService = {
   async createAnswer(answerData: AnswerCreate): Promise<AnswerResponse> {
@@ -452,7 +449,6 @@ export const gameplayService = {
   ): Promise<SubmitAnswerResponse> {
     try {
       const axiosInstance = getAxiosInstance();
-      // ✅ ATUALIZADO: Não envia points
       const requestData: SubmitAnswerRequest = {
         session_id: sessionId,
         question_id: questionId,

@@ -1,17 +1,17 @@
+import { Feather } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  StyleSheet,
-  View,
+  ActivityIndicator,
+  Alert,
   Image,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
+  View,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 //import { userService } from "../services/userApi";
 import { appSettings } from "../Configs/settings";
 
@@ -302,8 +302,6 @@ const styles = StyleSheet.create<any>({
     fontSize: 25,
     fontWeight: 500,
   },
-
-  //inputContent
 
   scrollcontent: {
     flex: 1,

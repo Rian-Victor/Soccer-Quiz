@@ -1,26 +1,26 @@
-import {
-  StyleSheet,
-  View,
-  Image,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Modal,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
-import { useState, useCallback } from "react";
-import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router"; // Importando useFocusEffect
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
-  teamService,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import {
+  QuestionResponse,
+  QuizCreate,
   TeamCreate,
   TeamResponse,
   questionService,
-  QuestionResponse,
   quizService,
-  QuizCreate,
+  teamService,
 } from "../../services/quizApi";
 
 interface TeamWithMembers extends TeamResponse {
@@ -59,8 +59,6 @@ export default function CreateQuiz() {
     { id: 4, name: "Futvôlei" },
   ];
 
-  // --- MUDANÇA PRINCIPAL AQUI ---
-  // Usamos useFocusEffect para recarregar sempre que a tela aparecer
   useFocusEffect(
     useCallback(() => {
       loadUserRole();
@@ -93,7 +91,7 @@ export default function CreateQuiz() {
 
   const loadQuestions = async () => {
     try {
-      setLoading(true); // Feedback visual rápido
+      setLoading(true);
       console.log("🔄 Buscando questões atualizadas...");
       
       const existingQuestions = await questionService.getQuestions();
@@ -103,10 +101,8 @@ export default function CreateQuiz() {
           return;
       }
 
-      // TRATAMENTO ROBUSTO DE ID
       const validQuestions = existingQuestions.map((q: any) => ({
           ...q,
-          // Garante que o ID existe, pegando 'id' ou '_id' e convertendo pra string
           id: String(q.id || q._id || "") 
       })).filter(q => q.id !== "" && q.id !== "undefined");
 
@@ -132,7 +128,6 @@ export default function CreateQuiz() {
   };
 
   const handleCategoryPress = (categoryId: number) => {
-    // Se clicar na mesma, desmarca (opcional)
     if (selectedCategory === categoryId) setSelectedCategory(null);
     else setSelectedCategory(categoryId);
   };
@@ -219,7 +214,7 @@ export default function CreateQuiz() {
       };
 
       await teamService.createTeam(teamData);
-      await loadTeams(); // Recarrega a lista
+      await loadTeams(); 
 
       setNewTeam({ name: "", country: "", members: "" });
       setModalVisible(false);
@@ -232,7 +227,6 @@ export default function CreateQuiz() {
     }
   };
 
-  // Filtra as questões visualmente baseado na categoria selecionada
   const filteredQuestions = selectedCategory 
     ? questions.filter(q => q.topic === categories.find(c => c.id === selectedCategory)?.name)
     : questions;
@@ -241,7 +235,6 @@ export default function CreateQuiz() {
     <View style={styles.container}>
       <View style={styles.content}>
         
-        {/* HEADER */}
         <View style={styles.logoContent}>
           <Image source={require("../../assets/images/LogoBG.png")} style={styles.loginLogo} />
           <Text style={styles.title}>FUTQUIZ</Text>
@@ -261,7 +254,6 @@ export default function CreateQuiz() {
 
         <ScrollView style={styles.scrollcontent}>
           
-          {/* CATEGORIAS */}
           <View style={styles.categoriesSection}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
               <View style={styles.categoriesContainer}>
@@ -287,7 +279,6 @@ export default function CreateQuiz() {
             </ScrollView>
           </View>
 
-          {/* LISTA DE QUESTÕES */}
           <View style={styles.questionsSection}>
             <Text style={styles.sectionTitle}>
               Selecione as questões ({selectedQuestionIds.size}):
@@ -327,7 +318,6 @@ export default function CreateQuiz() {
             )}
           </View>
 
-          {/* BOTÕES DE AÇÃO */}
           {userRole === "admin" && (
             <View style={{ marginBottom: 40 }}>
               <TouchableOpacity style={styles.avancarButton} onPress={handleAvançar}>
@@ -351,7 +341,6 @@ export default function CreateQuiz() {
         </ScrollView>
       </View>
 
-      {/* MODAL CRIAR TIME */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -411,7 +400,6 @@ export default function CreateQuiz() {
         </View>
       </Modal>
 
-      {/* MODAL CRIAR QUIZ */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -500,8 +488,6 @@ const styles = StyleSheet.create({
   emptyStateText: { fontFamily: "Rubik", fontSize: 16, color: "#777", textAlign: "center", lineHeight: 24 },
   avancarButton: { width: "90%", alignSelf: "center", backgroundColor: "#24bf94", borderRadius: 12, padding: 15, alignItems: "center", marginBottom: 15 },
   avancarText: { fontFamily: "Rubik", fontSize: 18, fontWeight: "500", color: "#FFF" },
-  
-  // Modal Styles
   modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.5)" },
   modalContent: { width: "85%", backgroundColor: "white", borderRadius: 12, padding: 25, elevation: 5 },
   modalTitle: { fontFamily: "Rubik", fontSize: 20, fontWeight: "500", marginBottom: 20, textAlign: "center" },

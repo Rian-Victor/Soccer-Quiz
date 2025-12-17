@@ -1,4 +1,4 @@
-import {StyleSheet, View, Image, Text, TextInput, TouchableOpacity} from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 export default function Perfil(){
     return(
@@ -17,7 +17,6 @@ export default function Perfil(){
 
 const styles = StyleSheet.create({
 
-    // CSS Padrão da página + Logo
     container:{
     flex:1,
     justifyContent: "center",

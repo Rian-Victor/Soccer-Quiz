@@ -1,16 +1,19 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, ScrollView
+    ActivityIndicator, Alert, ScrollView,
+    StyleSheet,
+    Text, TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     gameplayService,
-    QuizSession,
-    QuestionWithAnswers
+    QuestionWithAnswers,
+    QuizSession
 } from '../../services/quizApi';
-import { Feather } from '@expo/vector-icons';
 
 export default function GameScreen() {
     const router = useRouter();
@@ -100,20 +103,13 @@ export default function GameScreen() {
         }
     }, [currentQuiz?.id]);
 
-    // ✅ LÓGICA ESPELHADA DO BACKEND
-    // Garante que o placar no App seja igual ao do Banco de Dados
     const calculateScore = (timeTaken: number, difficulty: string = "medium") => {
         const BASE_POINTS = 100;
-        const MAX_TIME = 15; // Importante: deve bater com o questionTimer
+        const MAX_TIME = 15;
         
-        // 1. Sanitização
         const safeTime = Math.max(0, timeTaken);
-        
-        // 2. Bônus de Velocidade: (15 - Tempo Gasto) * 2
         const timeBonus = Math.max(0, (MAX_TIME - safeTime) * 2);
-        
-        // 3. Multiplicador de Dificuldade
-        let multiplier = 1.5; // Default Medium
+        let multiplier = 1.5;
         const diffStr = difficulty ? difficulty.toLowerCase() : "medium";
 
         switch (diffStr) {
@@ -195,7 +191,6 @@ export default function GameScreen() {
         setGameState('feedback');
 
         try {
-            // Garante que o tempo nunca passa de 15s ou seja negativo
             let tempoBruto = Math.floor((Date.now() - questionStartTime) / 1000);
             if (tempoEsgotado) tempoBruto = 15;
             const tempoGasto = Math.min(15, Math.max(0, tempoBruto));
@@ -208,7 +203,6 @@ export default function GameScreen() {
             let pointsNestaQuestao = 0;
             
             if (isCorrect) {
-                // ✅ Calcula pontos para mostrar na tela final, mas não envia pro backend
                 pointsNestaQuestao = calculateScore(tempoGasto, currentQuestion.difficulty);
                 correctCountRef.current += 1;
             } else {
@@ -224,14 +218,13 @@ export default function GameScreen() {
                 TOTAL ACUMULADO (Local): ${scoreAccumulatorRef.current}
             `);
 
-            // Usa o questionId do array de questões do quiz
             const currentQuestionId = currentQuiz.questions[localQuestionIndex];
             
             answersRef.current.push({
                 questionId: currentQuestionId, 
                 answerId: respostaEnviar,
                 timeTaken: tempoGasto,
-                points: pointsNestaQuestao // Guardamos apenas para referência local
+                points: pointsNestaQuestao 
             });
             
             setResultData({
@@ -260,15 +253,15 @@ export default function GameScreen() {
     };
 
     const submitAllAnswers = async () => {
-        console.log("🔄 submitAllAnswers chamado");
+        console.log("submitAllAnswers chamado");
         
         if (!currentQuiz) {
-            console.error("❌ currentQuiz é null");
+            console.error("currentQuiz é null");
             return;
         }
         
         if (answersRef.current.length === 0) {
-            console.error("❌ Nenhuma resposta para enviar");
+            console.error("Nenhuma resposta para enviar");
             return;
         }
 
@@ -283,7 +276,7 @@ export default function GameScreen() {
                 .filter((a) => a !== undefined);
 
             if (orderedAnswers.length === 0) {
-                console.error("❌ Nenhuma resposta encontrada");
+                console.error("Nenhuma resposta encontrada");
                 return;
             }
 
@@ -294,7 +287,6 @@ export default function GameScreen() {
                 if (!answer) continue;
                 
                 try {
-                    // ✅ O Backend calcula os pontos. Nós só mandamos o tempo.
                     const response = await gameplayService.submitAnswer(
                         currentQuizState.id,
                         answer.questionId,
@@ -305,7 +297,6 @@ export default function GameScreen() {
                     currentQuizState = {
                         ...currentQuizState,
                         current_question_index: response.current_question_index || currentQuizState.current_question_index + 1,
-                        // Se o backend retornar o novo total, confiamos nele
                         total_points: response.new_total_points || currentQuizState.total_points
                     };
                     
@@ -313,13 +304,13 @@ export default function GameScreen() {
                         break;
                     }
                 } catch (error: any) {
-                    console.error(`❌ Erro ao enviar resposta ${i + 1}:`, error);
+                    console.error(`Erro ao enviar resposta ${i + 1}:`, error);
                 }
             }
             
-            console.log("✅ Todas as respostas processadas");
+            console.log("Todas as respostas processadas");
         } catch (error: any) {
-            console.error("❌ Erro geral no envio:", error);
+            console.error("Erro geral no envio:", error);
         } finally {
             setSubmitting(false);
         }

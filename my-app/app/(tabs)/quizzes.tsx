@@ -1,17 +1,17 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-  StyleSheet,
-  View,
-  Image,
-  Text,
-  TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { quizService, QuizResponse } from "../../services/quizApi";
+import { QuizResponse, quizService } from "../../services/quizApi";
 
 export default function MyQuizzes() {
   const router = useRouter();
@@ -24,7 +24,6 @@ export default function MyQuizzes() {
   }, []);
 
   useEffect(() => {
-    // Se não for admin, redirecionar para home
     if (userRole !== null && userRole !== "admin") {
       router.replace("/(tabs)/home");
     } else if (userRole === "admin") {
@@ -114,7 +113,7 @@ export default function MyQuizzes() {
             <View style={styles.quizList}>
               {quizzes.map((quiz) => (
                 <TouchableOpacity
-                  key={quiz.id} // ADICIONADO AQUI: A chave única para cada item da lista
+                  key={quiz.id}
                   style={styles.quizCard}
                   onPress={() => handlePlayQuiz(quiz.id)}
                 >
