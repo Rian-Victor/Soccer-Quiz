@@ -50,8 +50,8 @@ export default function GameScreen() {
     const correctCountRef = useRef(0);     
     const wrongCountRef = useRef(0);       
 
-    const questionTimerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const totalTimerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const questionTimerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const totalTimerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
         loadUserRole();
@@ -165,7 +165,14 @@ export default function GameScreen() {
         try {
             setLoading(true);
             const question = await gameplayService.getQuestionWithAnswers(questionId);
-            setCurrentQuestion(question);
+            
+            const shuffledAnswers = [...question.answers].sort(() => Math.random() - 0.5);
+            const shuffledQuestion = {
+                ...question,
+                answers: shuffledAnswers
+            };
+            
+            setCurrentQuestion(shuffledQuestion);
             setQuestionStartTime(Date.now());
             setQuestionTimer(15);
             setIsActive(true);
@@ -257,12 +264,12 @@ export default function GameScreen() {
         
         if (!currentQuiz) {
             console.error("currentQuiz é null");
-            return;
+            return null;
         }
         
         if (answersRef.current.length === 0) {
             console.error("Nenhuma resposta para enviar");
-            return;
+            return null;
         }
 
         try {
@@ -277,10 +284,13 @@ export default function GameScreen() {
 
             if (orderedAnswers.length === 0) {
                 console.error("Nenhuma resposta encontrada");
-                return;
+                return null;
             }
 
             let currentQuizState = currentQuiz;
+            let finalTotalPoints = 0;
+            let finalCorrectAnswers = 0;
+            let finalWrongAnswers = 0;
 
             for (let i = 0; i < orderedAnswers.length; i++) {
                 const answer = orderedAnswers[i];
@@ -300,7 +310,11 @@ export default function GameScreen() {
                         total_points: response.new_total_points || currentQuizState.total_points
                     };
                     
-                    if (response.is_quiz_finished) {
+                    finalTotalPoints = response.new_total_points || currentQuizState.total_points;
+                    finalCorrectAnswers = response.correct_answers || 0;
+                    finalWrongAnswers = response.wrong_answers || 0;
+                    
+                    if (response.is_finished) {
                         break;
                     }
                 } catch (error: any) {
@@ -309,8 +323,32 @@ export default function GameScreen() {
             }
             
             console.log("Todas as respostas processadas");
+            
+            try {
+                const finalQuiz = await gameplayService.getCurrentQuiz();
+                if (finalQuiz) {
+                    return {
+                        total_points: finalQuiz.total_points,
+                        correct_answers: finalQuiz.correct_answers,
+                        wrong_answers: finalQuiz.wrong_answers
+                    };
+                }
+            } catch (e) {
+                return {
+                    total_points: finalTotalPoints,
+                    correct_answers: finalCorrectAnswers,
+                    wrong_answers: finalWrongAnswers
+                };
+            }
+            
+            return {
+                total_points: finalTotalPoints,
+                correct_answers: finalCorrectAnswers,
+                wrong_answers: finalWrongAnswers
+            };
         } catch (error: any) {
             console.error("Erro geral no envio:", error);
+            return null;
         } finally {
             setSubmitting(false);
         }
@@ -323,19 +361,26 @@ export default function GameScreen() {
         setIsActive(false);
         limparTimers();
 
-        const placarFinal = {
-            totalPoints: scoreAccumulatorRef.current,
-            correctAnswers: correctCountRef.current,
-            wrongAnswers: wrongCountRef.current,
-            totalTime: totalTimer
-        };
-
-        setResult(placarFinal);
-
         try {
-            await submitAllAnswers();
+            const finalResult = await submitAllAnswers();
+            
+            const placarFinal = {
+                totalPoints: finalResult?.total_points ?? scoreAccumulatorRef.current,
+                correctAnswers: finalResult?.correct_answers ?? correctCountRef.current,
+                wrongAnswers: finalResult?.wrong_answers ?? wrongCountRef.current,
+                totalTime: totalTimer
+            };
+
+            setResult(placarFinal);
         } catch (error) {
-            console.log("Erro ao salvar no backend, mas o resultado local está garantido.");
+            console.log("Erro ao salvar no backend, usando resultado local.");
+            const placarFinal = {
+                totalPoints: scoreAccumulatorRef.current,
+                correctAnswers: correctCountRef.current,
+                wrongAnswers: wrongCountRef.current,
+                totalTime: totalTimer
+            };
+            setResult(placarFinal);
         }
     };
 
@@ -523,8 +568,8 @@ const styles = StyleSheet.create({
     optionsContainer: { paddingHorizontal: 20, marginBottom: 20 },
     optionButton: { backgroundColor: 'white', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 1 },
     optionText: { fontSize: 16, color: '#333', fontWeight: '500', flex: 1, marginRight: 10 },
-    optionCorrect: { backgroundColor: '#A8D5C6', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#24BF94' },
-    optionWrong: { backgroundColor: '#F29898', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#D32F2F' },
+    optionCorrect: { backgroundColor: '#A8D5C6', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#24BF94', elevation: 1 },
+    optionWrong: { backgroundColor: '#F29898', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#D32F2F', elevation: 1 },
     submittingContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, marginBottom: 10 },
     submittingText: { fontSize: 14, color: '#24BF94', marginLeft: 10 },
     footer: { padding: 20, paddingBottom: 20 },

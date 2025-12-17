@@ -515,6 +515,23 @@ export const gameplayService = {
       throw new Error(`Erro ao buscar pergunta: ${errorMessage}`);
     }
   },
+
+  async inviteFriend(email: string): Promise<{ message: string }> {
+    try {
+      const axiosInstance = getAxiosInstance();
+      const response = await axiosInstance.post<{ message: string }>(
+        "/api/quiz/invite",
+        { email }
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Erro ao enviar convite";
+      throw new Error(`Erro ao enviar convite: ${errorMessage}`);
+    }
+  },
 };
 
 export const quizGameService = {

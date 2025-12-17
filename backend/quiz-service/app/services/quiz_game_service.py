@@ -53,10 +53,17 @@ class QuizGameService:
             
             question_ids = quiz.get("question_ids", [])
             
+            if not question_ids or len(question_ids) == 0:
+                raise ValueError(f"Quiz {quiz_id} não possui questões definidas")
+            
             if len(question_ids) < 5:
                 raise ValueError("Quiz não possui questões suficientes (mínimo 5)")
             
-            logger.info(f"🔍 Usando quiz pré-definido: {quiz_id} com {len(question_ids)} questões")
+            # Garantir que os IDs são strings
+            question_ids = [str(qid) for qid in question_ids if qid]
+            
+            logger.info(f"🔍 Usando quiz pré-definido: {quiz_id} com {len(question_ids)} questões específicas")
+            logger.info(f"🔍 IDs das questões: {question_ids[:5]}...")  # Log das primeiras 5
         else:
             # Lógica original: buscar questões aleatórias
             logger.info(f"🔍 DEBUG: Tentando buscar perguntas aleatórias...")

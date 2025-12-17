@@ -11,8 +11,9 @@ import {
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useState, useCallback } from "react";
-import { quizService, QuizResponse } from "../../services/quizApi";
+import { quizService, QuizResponse, gameplayService } from "../../services/quizApi";
 import { Feather } from '@expo/vector-icons';
+import { TextInput } from 'react-native';
 
 let hasSeenNotificationThisSession = false;
 
@@ -23,6 +24,9 @@ export default function Home() {
 
   const [showNotification, setShowNotification] = useState(false);
   const [newQuizData, setNewQuizData] = useState<QuizResponse | null>(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -100,6 +104,31 @@ export default function Home() {
     );
   };
 
+  const handleInviteFriend = async () => {
+    if (!inviteEmail.trim()) {
+      Alert.alert("Atenção", "Por favor, insira um email válido.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteEmail.trim())) {
+      Alert.alert("Atenção", "Por favor, insira um email válido.");
+      return;
+    }
+
+    try {
+      setInviting(true);
+      await gameplayService.inviteFriend(inviteEmail.trim());
+      Alert.alert("Sucesso", `Convite enviado para ${inviteEmail.trim()}!`);
+      setInviteEmail("");
+      setShowInviteModal(false);
+    } catch (error: any) {
+      Alert.alert("Erro", error.message || "Não foi possível enviar o convite.");
+    } finally {
+      setInviting(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       
@@ -137,6 +166,59 @@ export default function Home() {
         </View>
       </Modal>
 
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showInviteModal}
+        onRequestClose={() => setShowInviteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalIconContainer}>
+              <Feather name="user-plus" size={30} color="#FFF" />
+            </View>
+            
+            <Text style={styles.modalTitle}>Convidar Amigo</Text>
+            <Text style={styles.modalSubtitle}>
+              Envie um convite para um amigo participar do FutQuiz!
+            </Text>
+
+            <TextInput
+              style={styles.emailInput}
+              placeholder="Email do amigo"
+              placeholderTextColor="#999"
+              value={inviteEmail}
+              onChangeText={setInviteEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <TouchableOpacity 
+              style={[styles.modalButtonPlay, inviting && { opacity: 0.6 }]} 
+              onPress={handleInviteFriend}
+              disabled={inviting}
+            >
+              {inviting ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.modalButtonPlayText}>ENVIAR CONVITE</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.modalButtonClose} 
+              onPress={() => {
+                setShowInviteModal(false);
+                setInviteEmail("");
+              }}
+            >
+              <Text style={styles.modalButtonCloseText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.content}>
 
         <View style={styles.logoContent}>
@@ -145,6 +227,12 @@ export default function Home() {
             style={styles.loginLogo}
           />
           <Text style={styles.title}>FUTQUIZ</Text>
+          <TouchableOpacity 
+            onPress={() => setShowInviteModal(true)}
+            style={styles.inviteButton}
+          >
+            <Feather name="user-plus" size={20} color="#24bf94" />
+          </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.scrollcontent} showsVerticalScrollIndicator={false}>
@@ -212,7 +300,15 @@ const styles = StyleSheet.create({
     marginTop: 60,
     marginBottom: 20,
     flexDirection: "row",
-    alignItems: 'center'
+    alignItems: 'center',
+    width: '90%',
+    paddingHorizontal: 20
+  },
+  inviteButton: {
+    marginLeft: 'auto',
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0'
   },
   scrollcontent: {
     flex: 1,
@@ -351,5 +447,16 @@ const styles = StyleSheet.create({
   modalButtonCloseText: {
     color: '#999',
     fontSize: 14
+  },
+  emailInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    marginBottom: 20,
+    backgroundColor: '#f9f9f9'
   }
 });
