@@ -73,7 +73,6 @@ export default function Ranking() {
                     <View style={styles.topItemSmall}>
                         <Image source={getAvatar()} style={styles.avatarSmall} />
                         <Text style={styles.topName} numberOfLines={1}>{second.user_name}</Text>
-                        <View style={styles.badgeRank}><Text style={styles.badgeText}>2</Text></View>
                         <Text style={styles.topPoints}>{getValue(second)}</Text>
                     </View>
                 )}
@@ -82,7 +81,6 @@ export default function Ranking() {
                     <View style={styles.topItemMain}>
                         <Image source={getAvatar()} style={styles.avatarMain} />
                         <Text style={styles.topName} numberOfLines={1}>{first.user_name}</Text>
-                        <View style={[styles.badgeRank, { backgroundColor: '#FFC107' }]}><Text style={styles.badgeText}>1</Text></View>
                         <Text style={[styles.topPoints, { fontSize: 16, fontWeight: "bold" }]}>{getValue(first)}</Text>
                     </View>
                 )}
@@ -91,7 +89,6 @@ export default function Ranking() {
                     <View style={styles.topItemSmall}>
                         <Image source={getAvatar()} style={styles.avatarSmallTwo} />
                         <Text style={styles.topName} numberOfLines={1}>{third.user_name}</Text>
-                        <View style={[styles.badgeRank, { backgroundColor: '#BF8970' }]}><Text style={styles.badgeText}>3</Text></View>
                         <Text style={styles.topPoints}>{getValue(third)}</Text>
                     </View>
                 )}
@@ -287,22 +284,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "bold",
         color: "#24BF94",
-    },
-    badgeRank: {
-        backgroundColor: '#C0C0C0',
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-        position: 'absolute',
-        top: 60,
-        right: 0
-    },
-    badgeText: {
-        color: 'white',
-        fontSize: 10,
-        fontWeight: 'bold'
     },
     scrollcontent: {
         flex: 1,
