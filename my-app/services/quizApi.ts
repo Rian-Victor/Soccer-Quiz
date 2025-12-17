@@ -14,6 +14,7 @@ export interface QuestionResponse {
   statement: string;
   topic: string;
   difficulty: string;
+  team_id?: string | null;
   options?: string[];
   correct_option_index?: number;
 }
@@ -48,6 +49,7 @@ export interface QuizCreate {
   title: string;
   description?: string;
   question_ids: string[];
+  team_id?: string;
 }
 
 export interface QuizResponse {
@@ -55,6 +57,7 @@ export interface QuizResponse {
   title: string;
   description?: string;
   question_ids: string[];
+  team_id?: string;
   created_at: string;
   created_by: number;
 }

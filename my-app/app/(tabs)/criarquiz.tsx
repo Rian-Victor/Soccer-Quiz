@@ -32,24 +32,24 @@ export default function CreateQuiz() {
   const [teams, setTeams] = useState<TeamWithMembers[]>([]);
   const [questions, setQuestions] = useState<QuestionResponse[]>([]);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set());
-  
+
   const [modalVisible, setModalVisible] = useState(false);
   const [quizModalVisible, setQuizModalVisible] = useState(false);
-  
+
   const [newTeam, setNewTeam] = useState({
     name: "",
     country: "",
     members: "",
   });
-  
+
   const [newQuiz, setNewQuiz] = useState({
     title: "",
     description: "",
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
-  
+
   const router = useRouter();
 
   const categories = [
@@ -92,23 +92,21 @@ export default function CreateQuiz() {
   const loadQuestions = async () => {
     try {
       setLoading(true);
-      console.log("🔄 Buscando questões atualizadas...");
-      
+
       const existingQuestions = await questionService.getQuestions();
-      
+
       if (!existingQuestions) {
-          setQuestions([]);
-          return;
+        setQuestions([]);
+        return;
       }
 
       const validQuestions = existingQuestions.map((q: any) => ({
-          ...q,
-          id: String(q.id || q._id || "") 
+        ...q,
+        id: String(q.id || q._id || "")
       })).filter(q => q.id !== "" && q.id !== "undefined");
 
-      console.log(`✅ ${validQuestions.length} questões válidas carregadas.`);
       setQuestions(validQuestions);
-      
+
     } catch (error) {
       console.error("Erro ao carregar questões:", error);
       Alert.alert("Erro", "Falha ao carregar lista de questões.");
@@ -137,9 +135,9 @@ export default function CreateQuiz() {
   };
 
   const handleCriarPergunta = () => {
-    const categoryName = selectedCategory 
-        ? categories.find((cat) => cat.id === selectedCategory)?.name 
-        : "Futebol";
+    const categoryName = selectedCategory
+      ? categories.find((cat) => cat.id === selectedCategory)?.name
+      : "Futebol";
 
     router.push({
       pathname: "/(tabs)/criarpergunta",
@@ -170,13 +168,26 @@ export default function CreateQuiz() {
 
       const validQuestionIds = Array.from(selectedQuestionIds);
 
+      console.log("Criando quiz com:", {
+        title: newQuiz.title,
+        description: newQuiz.description,
+        question_ids: validQuestionIds,
+        quantidade: validQuestionIds.length
+      });
+
       const quizData: QuizCreate = {
         title: newQuiz.title,
         description: newQuiz.description || undefined,
         question_ids: validQuestionIds,
       };
 
-      await quizService.createQuiz(quizData);
+      const createdQuiz = await quizService.createQuiz(quizData);
+      console.log("Quiz criado:", {
+        id: createdQuiz.id,
+        title: createdQuiz.title,
+        question_ids: createdQuiz.question_ids,
+        quantidade_salva: createdQuiz.question_ids?.length || 0
+      });
 
       setNewQuiz({ title: "", description: "" });
       setSelectedQuestionIds(new Set());
@@ -214,7 +225,7 @@ export default function CreateQuiz() {
       };
 
       await teamService.createTeam(teamData);
-      await loadTeams(); 
+      await loadTeams();
 
       setNewTeam({ name: "", country: "", members: "" });
       setModalVisible(false);
@@ -227,14 +238,16 @@ export default function CreateQuiz() {
     }
   };
 
-  const filteredQuestions = selectedCategory 
-    ? questions.filter(q => q.topic === categories.find(c => c.id === selectedCategory)?.name)
-    : questions;
+  const generalQuestions = questions.filter(q => !q.team_id);
+
+  const filteredQuestions = selectedCategory
+    ? generalQuestions.filter(q => q.topic === categories.find(c => c.id === selectedCategory)?.name)
+    : generalQuestions;
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        
+
         <View style={styles.logoContent}>
           <Image source={require("../../assets/images/LogoBG.png")} style={styles.loginLogo} />
           <Text style={styles.title}>FUTQUIZ</Text>
@@ -253,7 +266,7 @@ export default function CreateQuiz() {
         </View>
 
         <ScrollView style={styles.scrollcontent}>
-          
+
           <View style={styles.categoriesSection}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
               <View style={styles.categoriesContainer}>
@@ -267,9 +280,9 @@ export default function CreateQuiz() {
                     onPress={() => handleCategoryPress(category.id)}
                   >
                     <Text style={[
-                        styles.categoryTitle,
-                        selectedCategory === category.id && styles.categoryTitleSelected,
-                      ]}
+                      styles.categoryTitle,
+                      selectedCategory === category.id && styles.categoryTitleSelected,
+                    ]}
                     >
                       {category.name}
                     </Text>
@@ -283,38 +296,38 @@ export default function CreateQuiz() {
             <Text style={styles.sectionTitle}>
               Selecione as questões ({selectedQuestionIds.size}):
             </Text>
-            
+
             {loading && questions.length === 0 ? (
-                <ActivityIndicator size="large" color="#24bf94" style={{marginTop: 20}} />
+              <ActivityIndicator size="large" color="#24bf94" style={{ marginTop: 20 }} />
             ) : filteredQuestions.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>
-                  {selectedCategory 
-                    ? "Nenhuma questão encontrada nesta categoria." 
+                  {selectedCategory
+                    ? "Nenhuma questão encontrada nesta categoria."
                     : "Nenhuma questão criada ainda.\nClique no + para criar!"}
                 </Text>
               </View>
             ) : (
               filteredQuestions.map((question) => (
-                  <TouchableOpacity
-                    key={question.id}
-                    style={[
-                      styles.questionContainer,
-                      selectedQuestionIds.has(question.id) && styles.questionContainerSelected,
-                    ]}
-                    onPress={() => toggleQuestionSelection(question.id)}
-                  >
-                    <View style={styles.questionCheckbox}>
-                      {selectedQuestionIds.has(question.id) && (
-                        <Text style={styles.checkmark}>✓</Text>
-                      )}
-                    </View>
-                    <View style={styles.questionContent}>
-                      <Text style={styles.questionText}>{question.statement}</Text>
-                      <Text style={styles.questionTopic}>{question.topic}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))
+                <TouchableOpacity
+                  key={question.id}
+                  style={[
+                    styles.questionContainer,
+                    selectedQuestionIds.has(question.id) && styles.questionContainerSelected,
+                  ]}
+                  onPress={() => toggleQuestionSelection(question.id)}
+                >
+                  <View style={styles.questionCheckbox}>
+                    {selectedQuestionIds.has(question.id) && (
+                      <Text style={styles.checkmark}>✓</Text>
+                    )}
+                  </View>
+                  <View style={styles.questionContent}>
+                    <Text style={styles.questionText}>{question.statement}</Text>
+                    <Text style={styles.questionTopic}>{question.topic}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))
             )}
           </View>
 
@@ -323,7 +336,7 @@ export default function CreateQuiz() {
               <TouchableOpacity style={styles.avancarButton} onPress={handleAvançar}>
                 <Text style={styles.avancarText}>Criar Time</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
                   styles.avancarButton,

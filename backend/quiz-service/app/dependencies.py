@@ -77,9 +77,11 @@ def get_quiz_repo(db=Depends(get_db_conn)) -> QuizRepository:
 # 4. Serviços (AQUI LIMPA AS ROTAS)
 def get_question_admin_service(
     q_repo=Depends(get_question_repo),
-    a_repo=Depends(get_answer_repo)
+    a_repo=Depends(get_answer_repo),
+    quiz_repo=Depends(get_quiz_repo),
+    team_repo=Depends(get_team_repo)
 ) -> QuestionAdminService:
-    return QuestionAdminService(q_repo, a_repo)
+    return QuestionAdminService(q_repo, a_repo, quiz_repo, team_repo)
 
 def get_quiz_game_service(
     s_repo=Depends(get_session_repo),

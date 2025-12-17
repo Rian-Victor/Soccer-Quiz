@@ -50,7 +50,6 @@ export default function Home() {
         const latestQuiz = sortedData[0]; 
 
         if (!hasSeenNotificationThisSession) {
-          console.log("🚀 [ALERTA] Primeira vez na sessão! Mostrando modal...");
           setNewQuizData(latestQuiz);
           setShowNotification(true);
           
@@ -72,10 +71,9 @@ export default function Home() {
   const handlePlayNewQuiz = () => {
     if (newQuizData) {
       setShowNotification(false);
-      
       router.push({
         pathname: "/game",
-        params: { mode: "custom", quizId: newQuizData.id } 
+        params: { quizId: newQuizData.id } 
       } as any);
     }
   };
@@ -95,10 +93,12 @@ export default function Home() {
         { text: "Cancelar", style: "cancel" },
         {
           text: "JOGAR",
-          onPress: () => router.push({
-            pathname: "/game",
-            params: { mode: "custom", quizId: quizId } 
-          } as any)
+          onPress: () => {
+            router.push({
+              pathname: "/game",
+              params: { quizId: quizId } 
+            } as any);
+          }
         }
       ]
     );
@@ -272,6 +272,14 @@ export default function Home() {
                     </Text>
                     <Text style={{ color: '#a8a4a4ff', fontSize: 14 }} numberOfLines={1}>
                       {quiz.description || "Sem descrição"}
+                    </Text>
+                    {quiz.team_id && (
+                      <Text style={{ color: '#24bf94', fontSize: 12, marginTop: 4 }}>
+                        Quiz do Time
+                      </Text>
+                    )}
+                    <Text style={{ color: '#999', fontSize: 12, marginTop: 2 }}>
+                      {quiz.question_ids?.length || 0} questão(ões)
                     </Text>
                   </View>
                 </TouchableOpacity>

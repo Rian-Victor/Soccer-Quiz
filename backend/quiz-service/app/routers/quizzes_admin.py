@@ -47,25 +47,39 @@ async def create_quiz(
     _admin_role: str = Depends(require_admin_role)
 ):
     """Cria um novo quiz (apenas admin)"""
+    logger.info(f"📝 Criando quiz: título='{quiz_data.title}', question_ids={quiz_data.question_ids}, team_id={quiz_data.team_id}")
+    
     # Validar que todas as questões existem
+    valid_question_ids = []
     for question_id in quiz_data.question_ids:
         question = await question_repo.get_by_id(question_id)
         if not question:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Questão com ID {question_id} não encontrada"
-            )
+            logger.warning(f"⚠️ Questão {question_id} não encontrada, pulando...")
+            continue
+        valid_question_ids.append(question_id)
+    
+    if not valid_question_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nenhuma questão válida fornecida"
+        )
+    
+    logger.info(f"✅ {len(valid_question_ids)} questões válidas de {len(quiz_data.question_ids)} fornecidas")
+    
     current_time = datetime.now(timezone.utc)
     
     quiz_dict = {
         "title": quiz_data.title,
         "description": quiz_data.description,
-        "question_ids": quiz_data.question_ids,
+        "question_ids": valid_question_ids,  # Usar apenas IDs válidos
+        "team_id": quiz_data.team_id,
         "created_at": current_time,
         "created_by": user_id
     }
     
+    logger.info(f"💾 Salvando quiz no banco: {quiz_dict}")
     quiz = await repository.create(quiz_dict)
+    logger.info(f"✅ Quiz criado com sucesso! ID: {quiz.get('id')}, question_ids salvos: {quiz.get('question_ids', [])}")
 
     try:
         difficulty_level = getattr(quiz_data, "difficulty", "Geral")

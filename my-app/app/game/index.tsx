@@ -1,24 +1,21 @@
-import { Feather } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
-    ActivityIndicator, Alert, ScrollView,
-    StyleSheet,
-    Text, TouchableOpacity,
-    View
+    StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     gameplayService,
-    QuestionWithAnswers,
-    QuizSession
+    QuizSession,
+    QuestionWithAnswers
 } from '../../services/quizApi';
+import { Feather } from '@expo/vector-icons';
 
 export default function GameScreen() {
     const router = useRouter();
-    const params = useLocalSearchParams();
-    const quizId = params.quizId as string;
+    
+    const params = useLocalSearchParams<{ quizId: string; id: string; quiz_id: string }>();
 
     const [loading, setLoading] = useState(true);
     const [currentQuiz, setCurrentQuiz] = useState<QuizSession | null>(null);
@@ -82,14 +79,25 @@ export default function GameScreen() {
 
     useEffect(() => {
         if (isActive && questionTimer > 0 && gameState === 'playing') {
-            questionTimerIntervalRef.current = setInterval(() => setQuestionTimer((p) => p - 1), 1000);
-        } else if (questionTimer === 0 && gameState === 'playing') {
-            setIsActive(false);
+            questionTimerIntervalRef.current = setInterval(() => {
+                setQuestionTimer((p) => {
+                    const newValue = p - 1;
+                    if (newValue <= 0) {
+                        setTimeout(() => {
+                            if (gameState === 'playing' && !submitting && currentQuestion) {
+                                handleResponder(true);
+                            }
+                        }, 100);
+                        return 0;
+                    }
+                    return newValue;
+                });
+            }, 1000);
         } else {
             if (questionTimerIntervalRef.current) clearInterval(questionTimerIntervalRef.current);
         }
         return () => { if (questionTimerIntervalRef.current) clearInterval(questionTimerIntervalRef.current); };
-    }, [isActive, questionTimer, gameState]);
+    }, [isActive, questionTimer, gameState, submitting, currentQuestion]);
 
     useEffect(() => {
         if (currentQuiz && !quizFinished && currentQuestion === null) {
@@ -140,13 +148,30 @@ export default function GameScreen() {
                     return;
                 }
             } catch (e) {}
+            
+            let finalQuizId: string | undefined = undefined;
+            
+            const rawId = params.quizId || params.id || params.quiz_id;
 
-            const response = await gameplayService.startQuiz(quizId);
+            if (rawId) {
+                const idString = Array.isArray(rawId) ? rawId[0] : String(rawId);
+                const cleanId = idString.trim();
+
+                if (cleanId !== "" && cleanId !== "undefined" && cleanId !== "null" && cleanId !== "[object Object]") {
+                    finalQuizId = cleanId;
+                }
+            }
+
+            const response = await gameplayService.startQuiz(finalQuizId);
+                        
             setCurrentQuiz(response.quiz);
             setQuestionStartTime(Date.now());
             await loadCurrentQuestion();
-        } catch (error) {
-            Alert.alert("Erro", "Erro ao iniciar quiz");
+
+        } catch (error: any) {
+            console.error("❌ Erro fatal ao iniciar quiz:", error);
+            const msg = error.response?.data?.detail || error.message || "Falha desconhecida";
+            Alert.alert("Erro", `Não foi possível iniciar o jogo.\n${msg}`);
             router.back();
         } finally {
             setLoading(false);
@@ -218,12 +243,7 @@ export default function GameScreen() {
 
             scoreAccumulatorRef.current += pointsNestaQuestao;
 
-            console.log(`📝 Questão respondida. 
-                Dificuldade: ${currentQuestion.difficulty}
-                Tempo: ${tempoGasto}s
-                Pontos (Local): ${pointsNestaQuestao} 
-                TOTAL ACUMULADO (Local): ${scoreAccumulatorRef.current}
-            `);
+            console.log(`Resposta: ${isCorrect ? 'CERTA' : 'ERRADA'} | Pontos: ${pointsNestaQuestao}`);
 
             const currentQuestionId = currentQuiz.questions[localQuestionIndex];
             
@@ -260,7 +280,7 @@ export default function GameScreen() {
     };
 
     const submitAllAnswers = async () => {
-        console.log("submitAllAnswers chamado");
+        console.log("Enviando respostas...");
         
         if (!currentQuiz) {
             console.error("currentQuiz é null");
@@ -321,8 +341,6 @@ export default function GameScreen() {
                     console.error(`Erro ao enviar resposta ${i + 1}:`, error);
                 }
             }
-            
-            console.log("Todas as respostas processadas");
             
             try {
                 const finalQuiz = await gameplayService.getCurrentQuiz();
@@ -568,8 +586,8 @@ const styles = StyleSheet.create({
     optionsContainer: { paddingHorizontal: 20, marginBottom: 20 },
     optionButton: { backgroundColor: 'white', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 1 },
     optionText: { fontSize: 16, color: '#333', fontWeight: '500', flex: 1, marginRight: 10 },
-    optionCorrect: { backgroundColor: '#A8D5C6', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#24BF94', elevation: 1 },
-    optionWrong: { backgroundColor: '#F29898', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#D32F2F', elevation: 1 },
+    optionCorrect: { backgroundColor: '#A8D5C6', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#24BF94' },
+    optionWrong: { backgroundColor: '#F29898', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#D32F2F' },
     submittingContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, marginBottom: 10 },
     submittingText: { fontSize: 14, color: '#24BF94', marginLeft: 10 },
     footer: { padding: 20, paddingBottom: 20 },

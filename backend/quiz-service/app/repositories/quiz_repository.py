@@ -18,20 +18,36 @@ class QuizRepository:
         if quiz_data and "_id" in quiz_data:
             quiz_data["id"] = str(quiz_data["_id"])
             del quiz_data["_id"]
+        # Garantir que question_ids seja uma lista de strings
+        if "question_ids" in quiz_data and quiz_data["question_ids"]:
+            quiz_data["question_ids"] = [str(qid) for qid in quiz_data["question_ids"]]
         return quiz_data
     
     async def create(self, quiz_data: Dict[str, Any]) -> Dict[str, Any]:
         """Cria um novo quiz"""
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"💾 Criando quiz no MongoDB: question_ids={quiz_data.get('question_ids', [])}")
         result = await self.collection.insert_one(quiz_data)
         quiz = await self.collection.find_one({"_id": result.inserted_id})
-        return self._convert_id(quiz)
+        converted = self._convert_id(quiz)
+        logger.info(f"✅ Quiz criado no MongoDB. ID: {converted.get('id')}, question_ids retornados: {converted.get('question_ids', [])}")
+        return converted
     
     async def get_by_id(self, quiz_id: str) -> Optional[Dict[str, Any]]:
         """Busca quiz por ID"""
+        import logging
+        logger = logging.getLogger(__name__)
         try:
             quiz = await self.collection.find_one({"_id": ObjectId(quiz_id)})
-            return self._convert_id(quiz) if quiz else None
+            if quiz:
+                converted = self._convert_id(quiz)
+                logger.info(f"🔍 Quiz recuperado do MongoDB. ID: {quiz_id}, question_ids: {converted.get('question_ids', [])}")
+                return converted
+            logger.warning(f"⚠️ Quiz não encontrado: {quiz_id}")
+            return None
         except InvalidId:
+            logger.error(f"❌ ID inválido ao buscar quiz: {quiz_id}")
             return None
     
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
@@ -73,4 +89,9 @@ class QuizRepository:
         if not quiz:
             return []
         return quiz.get("question_ids", [])
+    
+    async def get_by_team_id(self, team_id: str) -> Optional[Dict[str, Any]]:
+        """Busca quiz por team_id"""
+        quiz = await self.collection.find_one({"team_id": team_id})
+        return self._convert_id(quiz) if quiz else None
 

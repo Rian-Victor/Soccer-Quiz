@@ -42,8 +42,11 @@ class QuizGameService:
         
         question_ids: List[str] = []
         
-        # Se quiz_id foi fornecido, usar questões do quiz pré-definido
-        if quiz_id:
+        # Debug: verificar se quiz_id está sendo recebido
+        logger.info(f"🔍 DEBUG start_quiz: quiz_id={quiz_id} (tipo: {type(quiz_id)}), quiz_type={quiz_type}, team_id={team_id}")
+        
+        # Se quiz_id foi fornecido e não for vazio, usar questões do quiz pré-definido
+        if quiz_id and isinstance(quiz_id, str) and quiz_id.strip():
             if not self.quiz_repo:
                 raise ValueError("QuizRepository não está disponível")
             
@@ -51,19 +54,26 @@ class QuizGameService:
             if not quiz:
                 raise ValueError(f"Quiz com ID {quiz_id} não encontrado")
             
+            logger.info(f"🔍 Quiz encontrado no banco: {quiz.get('title', 'Sem título')}")
+            logger.info(f"🔍 question_ids no banco (tipo: {type(quiz.get('question_ids'))}): {quiz.get('question_ids')}")
+            
             question_ids = quiz.get("question_ids", [])
             
             if not question_ids or len(question_ids) == 0:
+                logger.error(f"❌ Quiz {quiz_id} não possui questões definidas! question_ids está vazio.")
                 raise ValueError(f"Quiz {quiz_id} não possui questões definidas")
             
-            if len(question_ids) < 5:
-                raise ValueError("Quiz não possui questões suficientes (mínimo 5)")
+            # Remover validação de mínimo de 5 questões quando é um quiz específico
+            # O usuário pode criar quizzes com qualquer quantidade de questões
+            if len(question_ids) < 1:
+                raise ValueError("Quiz não possui questões suficientes (mínimo 1)")
             
             # Garantir que os IDs são strings
             question_ids = [str(qid) for qid in question_ids if qid]
             
+            logger.info(f"🔍 Quiz encontrado: {quiz.get('title', 'Sem título')} com {len(question_ids)} questões")
             logger.info(f"🔍 Usando quiz pré-definido: {quiz_id} com {len(question_ids)} questões específicas")
-            logger.info(f"🔍 IDs das questões: {question_ids[:5]}...")  # Log das primeiras 5
+            logger.info(f"🔍 IDs das questões completos: {question_ids}")  # Log completo para debug
         else:
             # Lógica original: buscar questões aleatórias
             logger.info(f"🔍 DEBUG: Tentando buscar perguntas aleatórias...")
