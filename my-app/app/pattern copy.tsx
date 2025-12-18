@@ -1,4 +1,4 @@
-import {StyleSheet, View, Image, Text, TextInput, TouchableOpacity} from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
 export default function Pattern(){
     return(
@@ -17,7 +17,6 @@ export default function Pattern(){
 
 const styles = StyleSheet.create({
 
-    // CSS Padrão da página + Logo
     container:{
     flex:1,
     justifyContent: "center",

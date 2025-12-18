@@ -1,81 +1,99 @@
-const API_BASE_URL = "http://192.168.0.106:3002";
+import axios from "axios";
+import { appSettings } from "../Configs/settings";
 
-export interface LoginRequest {
+export interface LoginRequest { email: string; password: string; }
+export interface LoginResponse { access_token: string; refresh_token: string; token_type: string; expires_at: string; user_id: number; role: string; }
+export interface LogoutRequest { refresh_token: string; }
+export interface LogoutResponse { message: string; }
+export interface RefreshTokenRequest { refresh_token: string; }
+export interface RefreshTokenResponse { access_token: string; refresh_token: string; token_type: string; expires_at: string; }
+
+export interface PasswordResetRequest {
   email: string;
-  password: string;
 }
-
-export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_at: string;
-  user_id: number;
-  role: string;
-}
-
-export interface LogoutRequest {
-  refresh_token: string;
-}
-
-export interface LogoutResponse {
+export interface PasswordResetResponse {
   message: string;
 }
 
-export interface RefreshTokenRequest {
-  refresh_token: string;
+export interface ConfirmResetRequest {
+  token: string;
+  new_password: string;
+  email: string;
 }
 
-export interface RefreshTokenResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_at: string;
-}
+// SRP: authService encapsula apenas chamadas relacionadas à autenticação.
+// OCP: novos endpoints de auth podem ser adicionados aqui sem alterar o contrato utilizado pelos consumidores.
+// Instância do axios sem token para rotas de autenticação (login/logout/refresh)
+const authAxios = axios.create({
+  baseURL: appSettings.URL.backend.api,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  timeout: 10000, // 10 segundos
+});
 
+// SRP: authService encapsula apenas chamadas relacionadas à autenticação.
+// OCP: novos endpoints de auth podem ser adicionados aqui sem alterar o contrato utilizado pelos consumidores.
 export const authService = {
   async login(loginData: LoginRequest): Promise<LoginResponse> {
     console.log("Fazendo login...");
+    console.log("URL:", `${appSettings.URL.backend.api}/auth/login`);
 
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(loginData),
-    });
-
-    console.log("Status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro:", errorText);
-      throw new Error(`Erro ao fazer login: ${response.status} - ${errorText}`);
+    try {
+      const response = await authAxios.post<LoginResponse>(
+        "/auth/login",
+        loginData
+      );
+      console.log("Status:", response.status);
+      return response.data;
+    } catch (error: any) {
+      let errorMessage;
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Tempo de conexão esgotado. Verifique sua conexão de rede e se o servidor está acessível.";
+      } else {
+        errorMessage =
+          error.response?.data?.detail ||
+          error.message ||
+          "Erro ao fazer login";
+      }
+      console.error("Erro:", errorMessage);
+      throw new Error(
+        `Erro ao fazer login: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
+      );
     }
-
-    return await response.json();
   },
 
   async logout(logoutData: LogoutRequest): Promise<LogoutResponse> {
     console.log("Fazendo logout...");
 
-    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(logoutData),
-    });
-
-    console.log("Status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro:", errorText);
-      throw new Error(`Erro ao fazer logout: ${response.status} - ${errorText}`);
+    try {
+      const response = await authAxios.post<LogoutResponse>(
+        "/auth/logout",
+        logoutData
+      );
+      console.log("Status:", response.status);
+      return response.data;
+    } catch (error: any) {
+      let errorMessage;
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Tempo de conexão esgotado. Verifique sua conexão de rede e se o servidor está acessível.";
+      } else {
+        errorMessage =
+          error.response?.data?.detail ||
+          error.message ||
+          "Erro ao fazer logout";
+      }
+      console.error("Erro:", errorMessage);
+      throw new Error(
+        `Erro ao fazer logout: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
+      );
     }
-
-    return await response.json();
   },
 
   async refreshToken(
@@ -83,25 +101,59 @@ export const authService = {
   ): Promise<RefreshTokenResponse> {
     console.log("Renovando token...");
 
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(refreshData),
-    });
-
-    console.log("Status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro:", errorText);
+    try {
+      const response = await authAxios.post<RefreshTokenResponse>(
+        "/auth/refresh",
+        refreshData
+      );
+      console.log("Status:", response.status);
+      return response.data;
+    } catch (error: any) {
+      let errorMessage;
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Tempo de conexão esgotado. Verifique sua conexão de rede e se o servidor está acessível.";
+      } else {
+        errorMessage =
+          error.response?.data?.detail ||
+          error.message ||
+          "Erro ao renovar token";
+      }
+      console.error("Erro:", errorMessage);
       throw new Error(
-        `Erro ao renovar token: ${response.status} - ${errorText}`
+        `Erro ao renovar token: ${
+          error.response?.status || "unknown"
+        } - ${errorMessage}`
       );
     }
+  },
 
-    return await response.json();
+async requestPasswordReset(
+    resetData: PasswordResetRequest
+  ): Promise<PasswordResetResponse> {
+    console.log("Solicitando recuperação de senha para:", resetData.email);
+
+    try {
+      const response = await authAxios.post<PasswordResetResponse>(
+        "/users/password/forgot",
+        resetData
+      );
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  async confirmPasswordReset(data: ConfirmResetRequest): Promise<any> {
+    console.log("Enviando token e nova senha...");
+    try {
+      const response = await authAxios.post("/users/password/reset", data);
+
+      return response.data;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || error.message || "Erro ao redefinir a senha";
+      console.error("Erro no reset:", errorMessage);
+      throw new Error(`Erro: ${error.response?.status || "unknown"} - ${errorMessage}`);
+    }
   },
 };
-

@@ -7,8 +7,8 @@ from typing import Optional
 from app.config import settings
 
 # Cliente MongoDB global
-client: Optional[AsyncIOMotorClient] = None
-database = None
+client = AsyncIOMotorClient(settings.MONGODB_URL)
+database = client[settings.QUIZ_DB_NAME]
 
 
 async def init_db():

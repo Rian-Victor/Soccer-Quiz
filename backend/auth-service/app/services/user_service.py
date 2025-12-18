@@ -42,7 +42,8 @@ class UserServiceClient(IUserService):
                 id=data["id"],
                 email=data["email"],
                 password_hash=data["passwordHash"],
-                role=data["role"]
+                role=data["role"],
+                name=data.get("name", "Usuário")
             )
         except httpx.HTTPError as e:
             print(f"Erro ao buscar usuário no User Service: {e}")
@@ -50,6 +51,26 @@ class UserServiceClient(IUserService):
         except Exception as e:
             print(f"Erro inesperado ao buscar usuário: {e}")
             return None
+        
+    async def update_password(self, user_id: int, new_password_hash: str) -> bool:
+        """
+        Envia solicitação para atualizar a senha do usuário no User Service
+        """
+        try:
+            response = await self.client.patch(
+                f"{self.base_url}/users/internal/{user_id}/password",
+                json={"password_hash": new_password_hash}
+            )
+            
+            if response.status_code == 200:
+                return True
+                
+            print(f"Falha ao atualizar senha. Status: {response.status_code}")
+            return False
+            
+        except Exception as e:
+            print(f"Erro ao comunicar atualização de senha: {e}")
+            return False
     
     async def close(self):
         """Fecha o cliente HTTP"""

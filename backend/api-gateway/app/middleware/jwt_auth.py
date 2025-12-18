@@ -17,9 +17,12 @@ from app.config import settings
 PUBLIC_ROUTES = [
     "/api/auth/login",
     "/api/auth/logout",
-    "/api/users/password/forgot",
-    "/api/users/password/reset",
-    "/api/users/password/validate-token",
+    "/api/auth/refresh",  # Refresh token também é público
+    "/api/password/forgot",  # Corrigido: gateway usa /api/password/forgot
+    "/api/password/reset",  # Corrigido: gateway usa /api/password/reset
+    "/api/password/validate-token",  # Corrigido: gateway usa /api/password/validate-token
+    "/api/users",  # Rota pública para criação de usuário (cadastro)
+    "/api/user",  # Alias para rota de usuário (cadastro)
     "/",
     "/health",
     "/docs",

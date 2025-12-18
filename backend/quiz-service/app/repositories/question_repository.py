@@ -4,17 +4,17 @@ Implementação concreta do repositório de perguntas usando MongoDB
 from typing import Optional, List, Dict, Any
 from bson import ObjectId
 from bson.errors import InvalidId
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.interfaces.repositories import IQuestionRepository
 from app.database import get_database
 
 
-class QuestionRepository(IQuestionRepository):
+class QuestionRepository:
     """Implementação do repositório de perguntas com MongoDB"""
     
-    def __init__(self):
-        self.db = get_database()
-        self.collection = self.db.questions
+    def __init__(self, db: AsyncIOMotorDatabase):
+        #self.db = get_database()
+        self.collection = db["questions"]
     
     def _convert_id(self, question_data: Dict[str, Any]) -> Dict[str, Any]:
         """Converte ObjectId para string"""
@@ -48,7 +48,6 @@ class QuestionRepository(IQuestionRepository):
     async def update(self, question_id: str, question_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Atualiza uma pergunta"""
         try:
-            # Remover campos None
             update_data = {k: v for k, v in question_data.items() if v is not None}
             
             result = await self.collection.update_one(
@@ -70,4 +69,27 @@ class QuestionRepository(IQuestionRepository):
             return result.deleted_count > 0
         except InvalidId:
             return False
+        
+    async def get_random_questions(self, limit: int = 10, team_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        pipeline = []
+
+        # 1. ESTÁGIO DE FILTRO (MATCH)
+        if team_id:
+            pipeline.append({
+                "$match": {"team_id": team_id}
+            })
+        
+        # 2. ESTÁGIO DE SORTEIO (SAMPLE)
+        pipeline.append({
+            "$sample": {"size": limit}
+        })
+
+        # Executa a agregação
+        cursor = self.collection.aggregate(pipeline)
+        questions = await cursor.to_list(length=limit)
+  
+        for q in questions:
+            q["id"] = str(q["_id"])
+            
+        return questions
 

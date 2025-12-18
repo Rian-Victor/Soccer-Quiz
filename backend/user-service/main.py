@@ -5,6 +5,7 @@ Gerencia usuários e suas informações
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 import uvicorn
 
 from app.config import settings
@@ -16,8 +17,8 @@ from app.database import engine, Base
 async def lifespan(app: FastAPI):
     # Startup - Criar tabelas
     Base.metadata.create_all(bind=engine)
-    print(f"User Service iniciado na porta {settings.PORT}")
-    print(f" Documentação disponível em: http://localhost:{settings.PORT}/docs")
+    print(f" ✅ User Service iniciado na porta {settings.PORT}")
+    print(f" ✅ Documentação disponível em: http://localhost:{settings.PORT}/docs")
     yield
     # Shutdown
     print("User Service encerrado")
@@ -45,8 +46,8 @@ app.include_router(users.router, prefix="/users", tags=["users"])
 
 @app.get("/", tags=["health"])
 async def root():
-    """Health check endpoint"""
-    return {"service": "user-service", "status": "running", "version": "1.0.0"}
+    """Redireciona para a documentação Swagger"""
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health", tags=["health"])

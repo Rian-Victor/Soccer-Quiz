@@ -1,7 +1,48 @@
-import { Link } from "expo-router";
-import {StyleSheet, View, Image, Text, TextInput, TouchableOpacity} from "react-native";
+import { useRouter } from "expo-router";
+import {StyleSheet, View, Image, Text, TextInput, TouchableOpacity, Alert} from "react-native";
+import { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { authService } from "../../services/authApi";
 
 export default function Perfil(){
+    const router = useRouter();
+    const [loading, setLoading] = useState(false);
+
+    const clearStorage = async () => {
+        await AsyncStorage.multiRemove([
+            "access_token",
+            "refresh_token",
+            "user_id",
+            "user_role",
+            "expires_at"
+        ]);
+    };
+
+    const handleLogout = async () => {
+        setLoading(true);
+        try {
+            const refreshToken = await AsyncStorage.getItem("refresh_token");
+            
+            if (!refreshToken) {
+                await clearStorage();
+                router.replace("/login");
+                return;
+            }
+            
+            await authService.logout({ refresh_token: refreshToken });
+            
+            await clearStorage();
+            
+            router.replace("/login");
+        } catch (error: any) {
+            console.error("Erro ao fazer logout:", error);
+            await clearStorage();
+            router.replace("/login");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return(
         <View style={styles.container}>
             <View style={styles.content}>
@@ -29,7 +70,15 @@ export default function Perfil(){
                         <Text style={styles.userConfigText}>Informações pessoais</Text>
                         <Text style={styles.userConfigText}>Adicionar saldo</Text>
                         <Text style={styles.userConfigText}>Alterar foto</Text>
-                        <Link href="../login" style={[styles.userConfigText, {color: 'red', fontWeight: 300}]}>Sair</Link>
+                        <TouchableOpacity 
+                            onPress={handleLogout} 
+                            disabled={loading}
+                            style={loading && { opacity: 0.5 }}
+                        >
+                            <Text style={[styles.userConfigText, {color: 'red', fontWeight: 300}]}>
+                                {loading ? "Saindo..." : "Sair"}
+                            </Text>
+                        </TouchableOpacity>
                 </View>
                 </View>
             </View>
@@ -38,9 +87,8 @@ export default function Perfil(){
     )
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create<any>({
 
-    // CSS Padrão da página + Logo
     container:{
     flex:1,
     minWidth: 300,

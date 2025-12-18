@@ -5,9 +5,12 @@ CRUD de respostas
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
+from app.database import get_database
+from app.dependencies import get_answer_repo
 
 from app.repositories.answer_repository import AnswerRepository
-from app.interfaces.repositories import IAnswerRepository
+#from app.interfaces.repositories import IAnswerRepository
+from app.dependencies import require_admin_role
 
 
 router = APIRouter()
@@ -16,9 +19,9 @@ router = APIRouter()
 # Schemas Pydantic
 class AnswerCreate(BaseModel):
     """Schema para criação de resposta"""
-    text: str  # Texto da resposta
-    correct: bool  # Flag indicando se a resposta está correta
-    questionId: str  # ID da pergunta relacionada
+    text: str  
+    correct: bool 
+    questionId: str  
 
 
 class AnswerUpdate(BaseModel):
@@ -39,18 +42,23 @@ class AnswerResponse(BaseModel):
         from_attributes = True
 
 
-# Dependência para obter repositório
-def get_answer_repository() -> IAnswerRepository:
-    """Dependência para obter repositório de respostas"""
-    return AnswerRepository()
-
-
 @router.post("", response_model=AnswerResponse, status_code=status.HTTP_201_CREATED)
 async def create_answer(
     answer_data: AnswerCreate,
-    repository: IAnswerRepository = Depends(get_answer_repository)
+    repository: AnswerRepository = Depends(get_answer_repo),
+    _admin_role: str = Depends(require_admin_role)
 ):
     """Cria uma nova resposta (apenas admin)"""
+    # Se a resposta está marcada como correta, verificar se já existe outra correta
+    if answer_data.correct:
+        existing_correct = await repository.get_correct_answer_by_question(answer_data.questionId)
+        if existing_correct:
+            # Atualizar a resposta anterior para incorreta
+            await repository.update(
+                existing_correct["id"],
+                {"correct": False}
+            )
+    
     answer_dict = answer_data.model_dump()
     answer = await repository.create(answer_dict)
     return AnswerResponse(**answer)
@@ -60,56 +68,52 @@ async def create_answer(
 async def get_answers(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
-    question_id: Optional[str] = Query(None, description="Filtrar por ID da pergunta"),
-    repository: IAnswerRepository = Depends(get_answer_repository)
+    question_id: Optional[str] = Query(None),
+    repository: AnswerRepository = Depends(get_answer_repo)
 ):
     """Lista todas as respostas (apenas admin) - opcionalmente filtradas por question_id"""
     answers = await repository.get_all(skip=skip, limit=limit, question_id=question_id)
     return [AnswerResponse(**answer) for answer in answers]
 
 
-@router.get("/{answer_id}", response_model=AnswerResponse)
-async def get_answer(
-    answer_id: str,
-    repository: IAnswerRepository = Depends(get_answer_repository)
-):
-    """Busca uma resposta por ID (apenas admin)"""
-    answer = await repository.get_by_id(answer_id)
-    if not answer:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Resposta com ID {answer_id} não encontrada"
-        )
-    return AnswerResponse(**answer)
+# @router.get("/{answer_id}", response_model=AnswerResponse)
+# async def get_answer(
+#     answer_id: str,
+#     repository: IAnswerRepository = Depends(get_answer_repository)
+# ):
+#     """Busca uma resposta por ID (apenas admin)"""
+#     answer = await repository.get_by_id(answer_id)
+#     if not answer:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail=f"Resposta com ID {answer_id} não encontrada"
+#         )
+#     return AnswerResponse(**answer)
 
 
-@router.patch("/{answer_id}", response_model=AnswerResponse)
-async def update_answer(
-    answer_id: str,
-    answer_data: AnswerUpdate,
-    repository: IAnswerRepository = Depends(get_answer_repository)
-):
-    """Atualiza uma resposta (apenas admin)"""
-    update_dict = answer_data.model_dump(exclude_none=True)
-    answer = await repository.update(answer_id, update_dict)
-    if not answer:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Resposta com ID {answer_id} não encontrada"
-        )
-    return AnswerResponse(**answer)
+# @router.patch("/{answer_id}", response_model=AnswerResponse)
+# async def update_answer(
+#     answer_id: str,
+#     answer_data: AnswerUpdate,
+#     repository: IAnswerRepository = Depends(get_answer_repository)
+# ):
+#     """Atualiza uma resposta (apenas admin)"""
+#     update_dict = answer_data.model_dump(exclude_none=True)
+#     answer = await repository.update(answer_id, update_dict)
+#     if not answer:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail=f"Resposta com ID {answer_id} não encontrada"
+#         )
+#     return AnswerResponse(**answer)
 
 
 @router.delete("/{answer_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_answer(
     answer_id: str,
-    repository: IAnswerRepository = Depends(get_answer_repository)
+    repository: AnswerRepository = Depends(get_answer_repo),
+    _admin_role: str = Depends(require_admin_role)
 ):
-    """Deleta uma resposta (apenas admin)"""
     success = await repository.delete(answer_id)
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Resposta com ID {answer_id} não encontrada"
-        )
-
+        raise HTTPException(status_code=404, detail="Resposta não encontrada")

@@ -5,13 +5,14 @@ Responsável por login, logout e geração/validação de tokens (JWT e Refresh)
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 import uvicorn
 
 from app.config import settings
 from app.routers import auth
 from app.database import engine, Base
 
-
+# SRP: este módulo controla apenas o ciclo de vida do serviço, mantendo a lógica de domínio nos routers.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup - Criar tabelas
@@ -45,8 +46,8 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 
 @app.get("/", tags=["health"])
 async def root():
-    """Health check endpoint"""
-    return {"service": "auth-service", "status": "running", "version": "1.0.0"}
+    """Redireciona para a documentação Swagger"""
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health", tags=["health"])

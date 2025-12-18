@@ -26,6 +26,16 @@ class Settings(BaseSettings):
     
     # User Service URL (para buscar dados do usuário)
     USER_SERVICE_URL: str = "http://user-service:3000"
+
+        # Password Reset Token Configuration
+    RESET_TOKEN_EXPIRE_MINUTES: int = 15  # Token expira em 15 minutos
+    
+    # RabbitMQ Configuration
+    RABBITMQ_URL: str = "amqp://guest:guest@rabbitmq:5672/"
+    RABBITMQ_EXCHANGE: str = "notifications"
+    
+    # Frontend URL para links de reset
+    FRONTEND_URL: str = "https://seuapp.com"
     
     class Config:
         env_file = ".env"
