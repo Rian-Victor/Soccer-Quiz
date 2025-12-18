@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-//import { userService } from "../services/userApi";
+import { userService } from "../services/userApi";
 import { appSettings } from "../Configs/settings";
 
 export default function Cadastro() {
@@ -72,22 +72,50 @@ export default function Cadastro() {
       console.log("Tentando criar usuário...");
       console.log("URL do backend:", appSettings.URL.backend.api);
 
-      /*const response = await userService.createUser({
+      const response = await userService.createUser({
         name: nome.trim(),
         email: email.trim(),
         password: senha,
-      });*/
+      });
 
-      /*console.log("Usuário criado com sucesso! ID:", response.id);*/
+      console.log("Usuário criado com sucesso! ID:", response.id);
 
       Alert.alert("Sucesso", "Conta criada com sucesso!", [
         { text: "Fazer Login", onPress: () => router.replace("/login") },
       ]);
     } catch (err: any) {
       console.error("Erro no cadastro:", err);
-      const errorMessage =
-        err.message ||
+
+      // Extrair mensagem de erro do backend
+      let errorMessage =
         "Erro ao criar conta. Verifique os dados e tente novamente.";
+
+      if (err.message) {
+        // Se a mensagem contém "já está em uso", é erro de email duplicado
+        if (
+          err.message.includes("já está em uso") ||
+          err.message.includes("Email")
+        ) {
+          errorMessage =
+            "Este email já está cadastrado. Tente fazer login ou use outro email.";
+        } else if (
+          err.message.includes("timeout") ||
+          err.message.includes("ECONNABORTED")
+        ) {
+          errorMessage =
+            "Tempo de conexão esgotado. Verifique sua conexão e tente novamente.";
+        } else if (
+          err.message.includes("ECONNREFUSED") ||
+          err.message.includes("ENOTFOUND")
+        ) {
+          errorMessage =
+            "Não foi possível conectar ao servidor. Verifique se o backend está rodando.";
+        } else {
+          // Usar mensagem do backend se disponível
+          errorMessage = err.message;
+        }
+      }
+
       Alert.alert("Erro ao cadastrar", errorMessage);
     } finally {
       setLoading(false);

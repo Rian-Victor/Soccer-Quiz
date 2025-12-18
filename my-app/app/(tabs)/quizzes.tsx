@@ -111,9 +111,9 @@ export default function MyQuizzes() {
             </View>
           ) : (
             <View style={styles.quizList}>
-              {quizzes.map((quiz) => (
+              {quizzes.map((quiz, index) => (
                 <TouchableOpacity
-                  key={quiz.id}
+                  key={`quiz-${quiz.id || index}-${index}`}
                   style={styles.quizCard}
                   onPress={() => handlePlayQuiz(quiz.id)}
                 >

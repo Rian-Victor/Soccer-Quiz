@@ -382,12 +382,35 @@ export default function GameScreen() {
         try {
             const finalResult = await submitAllAnswers();
             
+            // Priorizar refs locais que são atualizados durante o jogo
+            // Só usar backend se refs estiverem zerados e backend tiver valores
+            const localCorrect = correctCountRef.current;
+            const localWrong = wrongCountRef.current;
+            const localPoints = scoreAccumulatorRef.current;
+            
+            const backendCorrect = finalResult?.correct_answers ?? 0;
+            const backendWrong = finalResult?.wrong_answers ?? 0;
+            const backendPoints = finalResult?.total_points ?? 0;
+            
+            // Usar valores locais se forem maiores que 0, senão usar backend
+            const finalCorrect = localCorrect > 0 ? localCorrect : backendCorrect;
+            const finalWrong = localWrong > 0 ? localWrong : backendWrong;
+            const finalPoints = localPoints > 0 ? localPoints : backendPoints;
+            
             const placarFinal = {
-                totalPoints: finalResult?.total_points ?? scoreAccumulatorRef.current,
-                correctAnswers: finalResult?.correct_answers ?? correctCountRef.current,
-                wrongAnswers: finalResult?.wrong_answers ?? wrongCountRef.current,
+                totalPoints: finalPoints,
+                correctAnswers: finalCorrect,
+                wrongAnswers: finalWrong,
                 totalTime: totalTimer
             };
+
+            console.log("Placar final:", placarFinal);
+            console.log("Refs locais:", { 
+                correct: localCorrect, 
+                wrong: localWrong, 
+                points: localPoints 
+            });
+            console.log("Backend:", finalResult);
 
             setResult(placarFinal);
         } catch (error) {
